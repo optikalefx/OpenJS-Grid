@@ -1,0 +1,421 @@
+/*
+
+OpenJS Grid
+
+Copyright (c) 2011 Sean Clark, http://square-bracket.com
+http://youtube.com/optikalefxx
+http://square-bracket.com/openjs
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+This is OpenJS Grid version 1.8
+Style Theme: Node
+
+*/
+
+/*********************************************************************************/
+/*********************************************************************************/
+/*****************************      COLORS       *********************************/
+/*********************************************************************************/
+/*********************************************************************************/
+
+/* main color */
+.gridContainer {
+	
+	padding:20px;
+	
+	background-color: #636470;
+
+	/* Grid Shadow */
+	-webkit-box-shadow: 0px 0px 10px #000;
+	-moz-box-shadow: 0px 0px 10px #000;
+}
+
+/* Font Family, Size and Color */
+.gridContainer, .grid, .gridHeaderRow, .gridContainer a, .gridContainer input {
+	font-family:arial;
+	font-size:11px;
+	font-weight:bold;
+	color:#fff;
+}
+
+.grid {
+	border-spacing:0px;
+	border-collapse:collapse;
+	/* if you want cell separation
+	border-spacing:1px;
+	border-collapse:separate;
+	*/
+	
+	background:#464752;
+}
+
+
+/*********************************************************************************/
+/*********************************************************************************/
+/*****************************      END COLORS       *****************************/
+/*********************************************************************************/
+/*********************************************************************************/
+
+
+/* if you want to turn off animations for speed reasons turns these off */
+.gridContainer tr, .gridContainer td, .gridContainer th, .gridContext div {
+	/*
+	-webkit-transition: background-color 200ms linear;
+	-moz-transition: background-color 200ms linear;
+	*/
+}
+
+/* padding of the cells */
+.grid td, .gridHeaderRow th {
+	padding:0px;
+	border-left:1px solid #636470;
+	padding-left:6px;
+}
+.grid td {
+	border-left-color:transparent;
+}
+
+.grid td:first-child, .gridHeaderRow th:first-child {
+	padding-left:12px;
+}
+
+.grid td {
+	padding-top:5px;
+	padding-bottom:5px;
+}
+
+/* ODD ROWS */
+.grid tr:nth-child(2n) {
+	
+}
+/* EVEN ROWS */
+.grid tr:nth-child(2n+1) {
+	
+}
+
+/* this can't inherit the color because its fixed to the bottom of the page */
+.gridPager.fixed {
+	background:#333;
+}
+
+/* Row Highlight */
+.gridWrapper tr:hover, .gridContainer th:hover,  .gridWrapper tr:hover input, .gridWrapper tr:hover a{
+	color:#fff;
+	background-color: #525357;
+}
+
+/* Current Cell Highlight */
+.grid td:hover {
+	background-color: #636470;
+}
+
+
+/* Cell Borders */
+.grid td {
+	
+}
+
+.gridHeaderRow {	
+	border-collapse:collapse;
+}
+
+
+/* column hilte */
+.grid td.hilite {
+	background-color:#2A8ADD;
+	color:#fff;
+}
+
+/* stuck row */
+.stuckRow td{
+	padding:8px;
+	background:#000;
+}
+/* right click menu main box */
+.gridContext {
+	background-color:white;
+	-moz-border-radius:5px;
+	border-radius:5px;
+	-moz-box-shadow:3px 3px 15px #000;
+	-webkit-box-shadow:3px 3px 15px #000;
+	box-shadow:3px 3px 15px #000;
+}
+/* right click menu each item */
+.gridContext div {
+	color:black;
+	font-size:12px;
+	padding:6px 15px;
+}
+/* right click menu hover */
+.gridContext div:hover {
+	background-color:#4071ee;
+	color:white;
+}
+/* editable cell */
+.editableInput[type="text"] {
+
+	border-width:0px;
+	/*border-bottom:1px dashed #ccc;*/
+}
+
+textarea.editableInput {
+	
+}
+
+/* title bar */
+.gridTitle {
+	padding:10px;
+	font-size:14px;
+	
+	
+}
+
+/* structure for entire grid */
+.gridContainer {
+	margin-bottom:10px;
+	overflow:hidden;
+	position:relative;
+	border-collapse:collapse;
+}
+
+/* minimum shown before scroll bar apppears */
+.gridWrapper {
+	max-height:500px;
+	overflow-x:hidden;
+}
+
+.gridHeaderRow tr:first-child {
+
+	background-color: rgba(0,0,0,.2);
+	background-image: -webkit-gradient(linear, left top, left bottom, from(transparent), to(rgba(0,0,0,.2))); 
+	background-image: -webkit-linear-gradient(top, transparent, rgba(0,0,0,.2)); 
+	background-image:    -moz-linear-gradient(top, transparent, rgba(0,0,0,.2)); 
+	background-image:     -ms-linear-gradient(top, transparent, rgba(0,0,0,.2)); 
+	background-image:      -o-linear-gradient(top, transparent, rgba(0,0,0,.2)); 
+	background-image:         linear-gradient(top, transparent, rgba(0,0,0,.2));
+}
+
+/* the header row cells */
+.gridHeaderRow th {
+	width:150px;
+	cursor:pointer;
+	padding-top:12px;
+	padding-bottom:12px;
+}
+
+.gridHeaderRow th:first-child {
+	border-left:0px;
+}
+.gridHeaderRow th:last-child {
+	border-right:0px;
+}
+
+/* expand the inner components to meet the size of the container */
+.grid, .gridHeaderRow {
+	width: 100%;
+}
+
+/* all input fields */
+.gridContainer input, textarea {
+	background-color:rgba(0,0,0,.4);
+	border:1px solid rgba(255,255,255,.2);
+	outline:0px;
+	height:2em;
+	margin-top:-2px;
+	-moz-border-radius:3px;
+	border-radius:3px;
+	-webkit-box-shadow: inset 0px 2px 5px #111111;
+	-moz-box-shadow: inset 0px 2px 5px #111111;
+	border:0px;
+}
+
+/* no border left on first cell */
+.grid td:first-child {
+	border-left:0px;
+}
+/* no border right on last cell */
+.grid td:last-child {
+	border-right:0px;
+}
+/* select drop down boxes */
+.grid td select {
+	width:95%;
+	border: 1px solid rgba(255,255,255,.1);
+	outline:0px;
+}
+/* the pager */
+.gridPager {
+	width:auto;
+	height:25px;
+	overflow:hidden;
+	padding:10px 0px 10px 10px;
+	border-bottom-left-radius: 10px;
+	border-bottom-right-radius: 10px;
+	-moz-border-radius-bottomright: 10px;
+	-moz-border-radius-bottomleft: 10px;
+	
+	background-color: rgba(0,0,0,.2);
+	background-image: -webkit-gradient(linear, left top, left bottom, from(transparent), to(rgba(0,0,0,.2))); 
+	background-image: -webkit-linear-gradient(top, transparent, rgba(0,0,0,.2)); 
+	background-image:    -moz-linear-gradient(top, transparent, rgba(0,0,0,.2)); 
+	background-image:     -ms-linear-gradient(top, transparent, rgba(0,0,0,.2)); 
+	background-image:      -o-linear-gradient(top, transparent, rgba(0,0,0,.2)); 
+	background-image:         linear-gradient(top, transparent, rgba(0,0,0,.2));
+}
+
+.gridPager.pagerTop {
+	border-radius:0;
+	-moz-border-radius:0;
+	-webkit-border-radius:0;
+}
+
+/* when the pager is fixed */
+.gridPager.fixed {
+	position:fixed;
+	bottom:0;
+	z-index:999;
+	width:100%;
+}
+/* the last button in the pager when its fixed */
+.gridPager.fixed > div:last-child {
+	position: relative;
+	left:-20px;
+}
+/* every div inside the pager */
+.gridPager > div {
+	margin-right:16px;
+	float:left;
+}
+
+/* the text string inside the pager */
+.gridTotal {
+	padding:5px;
+}
+/* button styles */
+.gridButton {
+	padding:5px;
+	-moz-border-radius:3px;
+	border-radius:3px;
+	cursor:pointer;
+	text-align:center;
+	font-size:11px;
+	
+	background-color: #525357;
+	background-image: -webkit-gradient(linear, left top, left bottom, from(#636470), to(#525357)); 
+	background-image: -webkit-linear-gradient(top, #636470, #525357); 
+	background-image:    -moz-linear-gradient(top, #636470, #525357); 
+	background-image:     -ms-linear-gradient(top, #636470, #525357); 
+	background-image:      -o-linear-gradient(top, #636470, #525357); 
+	background-image:         linear-gradient(top, #636470, #525357);
+	
+	-webkit-box-shadow:1px 1px 5px #222;
+	box-shadow:1px 1px 5px #222;
+	
+	color:white;
+
+}
+
+.gridButton:active {
+	-webkit-box-shadow:-1px -1px 4px black;
+	-moz-box-shadow:-1px -1px 4px black;	
+}
+
+/* buttons in the title bar */
+.gridTitle .gridButton {
+	margin-top:-3px;
+	margin-right:6px;
+	float:right;
+}
+
+/* save button in the pager */
+.gridPager .gridSave {
+	float:right !important;
+	display:none;
+}
+/* refresh button is tinier */
+.gridRefresh {
+	font-size:10px;
+}
+
+/* the div inside of each th that will chagne size */
+.colResizer {
+	background-color:transparent;
+	position:relative;
+	height:inherit;
+}
+/* the handle on each th that will grab to resize */
+.colHandle {
+	height:100%;
+	width:20px;
+	background-color:transparent;
+	position:absolute;
+	right:0px;
+	top:0px;
+}
+/* the bottom right corner div that allows you to resize */
+.gridHandle {
+	width:10px;
+	height:10px;
+	cursor:se-resize;
+	position:absolute;
+	bottom:0px;
+	right:0px;
+	background-color:rgba(0,0,0,.5);
+}
+
+/* the right click menu */
+.gridContext {
+	position:fixed;
+	width:200px;
+	padding:2px;
+	z-index:99999;
+}
+/* each option in the right click menu */
+.gridContext div {
+	cursor:pointer;
+}
+/* the close button in the right click  menu */
+.closeContext {
+	margin:0px !important;
+	padding:0px !important;
+	position:absolute;
+	top:3px;
+	right:3px;
+	z-index:98;
+	font-size:11px !important;
+}
+/* each input box inside the table inherits its parent styles */
+.editableInput {
+	width:95%;
+	background:transparent;
+	color:inherit;
+	font-weight:inherit;
+	font-size:inherit;
+	font-family:inherit;
+	margin:0px;
+}
+/* clickable nRows */
+.nRows {
+	cursor:pointer;
+}
+.grid a {
+	text-decoration:underline;
+}
