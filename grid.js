@@ -1,1312 +1,1452 @@
-/*
+// Open JS Grid Version 2
+// Requires RootJS
+var grids = [];
+(function($) {
 
-OpenJS Grid
-
-Copyright (c) 2011 Sean Clark, http://square-bracket.com
-http://youtube.com/optikalefxx
-http://square-bracket.com/openjs
-
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-This is openGrid version 1.8
-
-*/
-
-$(function() {	
-	
-	/* to do
-	
-	subGrids
-	
+	/* TODO
+		textarea type
+		per row editing
+		adding
+		multigrids
+		row-highlight
 	*/
 	
 	
-	// load / reload grid function
-	$.fn.loadGrid = function(user_opts) {
-		return this.each(function() {
-			
-			// setup DEFAULT options
-			var opts = $.extend({
-				order_by : "",			// sql order by
-				sort : "DESC",			// sql sort by
-				page:1,					// page to start on
-				search:"",				// search term
-				justSearched:false,		// used to allow searching to db without the filtering destorying fields that aren't on the grid
-				nRowsShowing:5,			// how many rows to show
-				resizable:true,			// is the grid resizable?
-				resizableColumns:true,	// can the columns be resized?
-				pager:true,				// show the pager?
-				pagerLocation:"bottom",	// bottom|top|both
-				saveLocation:"pager",	// pager|title|both
-				refreshButton:false,	// show the refresh button
-				dateRange:false,		// dateRange set to a column
-				dateRangeFrom:"",		// dateRange start from
-				dateRangeTo:"",			// dateRange start to
-				stickyRows:true,		// can you dbl click to stick rows?		bug - cant edit a stuck row
-				clickToSort:true,		// can you click to sort?
-				inlineEditing:false,	// can you inline edit?
-				showRowNumber:false,	// show row numbers on the left
-				loadingMessage:"loading",// if blockUI is available, this is the message it will use
-				maxLength :	false,		// weather to get max length data from the database or not
-				width:"100%",			// width of the grid
-				height:"auto",			// height of the grid
-				maxHeight:500,			// max height of the grid
-				fullScreen:false,		// full screenmode
-				adding : false,			// adding on
-				addButton:false,		// re route the add button
-				linkTarget:"_blank",	// when making links, whats the target
-				confirmBeforeSort:true, // weather to confirm sorting which will kill all unsaved changes
-				deleting : false,		// deleting on
-				deleteConfirm: false,	// set to a column name to use as a confirmation
-				dateFormat:'yy-mm-dd',	// datepicker format - note requires jquery ui and datepicker
-				pageSearchResults:true,	// weather to page search results or not
-				columnOpts : null,		// options for each column (advanced stuff)
-				rowClick : null,		// callback for clicking on a row
-				rowAdd : null,			// callback as rows are being added to the grid NOT DONE
-				cellAdd : null,			// callback as cells are being added to the grid NOT DONE
-				beforeLoadStart:null,	// callback before loading starts
-				loadStart:null,			// callback after load is done, but before all my stuff
-				loadComplete:null,		// callback after load and after all my stuff
-				saveSuccess:null,		// after succesfull save
-				saveFail:null,			// after failed save
-				deleteSuccess:null,		// after delete success
-				deleteFail:null		// after delete fail
-			},user_opts);
-			
-			// cache our man grid, this is the <table>
-			var $grid = $(this);
-			
-			// wrap our grid in a div for individuality
-			if(!$grid.parents(".gridWrapper").length) {
-				var $gridContainer = $grid.wrap("<div class='gridContainer'>");
-				$gridContainer.wrap("<div class='gridWrapper'>");
-			}
-			
-			// extend your new options with the saved ones
-			if($grid.data().page) {
-				$.extend($grid.data(),user_opts);
-			
-			// if there are no saved options - use the default
-			} else {
-				$.each(opts,function(property,value) {
-					// if we have a callback function, we can't store it in data
-					// it will get executed right away
-					if(typeof(value) != "function") {
-						//$.data($grid,property,value);
-						$grid.data(property,value);
+	/*
+		So you guys know, RootJS is a thing I've been working on for a while, it makes writing OOP code super easy
+		Root.jQueryPlugin uses that to make any RootJS object a jquery plugin.  What that means is that when you define
+		and object like I have below, You get the following functionality.
+		$(selector).plugin()
+		$(selector).plugin({object of options})
+		$(selector).plugin("method")
+		$(selector).plugin("method","param1","param2")
+		$(selector).plugin("property")
+		$(selector).plugin("property","value")
+	*/
+	window.Grid = Root.jQueryPlugin("grid",{
+		
+		// default settable options
+		opts : {
+			title : "",					// title attribute on this table
+			action : "",				// action url on this table		
+			nRowsShowing : 15,			// number of rows to show on load
+			minAllowedColWidth : 50,	// when auto sizing columns, they can't be less than this size
+			class : "",					// classes on this table
+			showPager : true,
+			deleting : false,
+			checkboxes : false,
+			rowNumbers : false,
+			editing : false,
+			width : "100%",
+			rowHeight : null,			// this is null to start because if you dont use it, it doesn't loop through stylesheets
+			page : 1
+		},
+		
+		// public properties
+		cols : "",		// comma list of columns to get data for
+		columns : {},
+		pager : null,
+		toSave : [],
+		
+		// cell types
+		// you can add your own here as well
+		cellTypes : {
+			"text": function(value, columnOpts, grid) {
+				if(grid.opts.editing) {
+					return {
+						cellClass: "editable input",
+						cellValue: "<input type='text' value='"+value+"'/>"
+					}
+				}
+			},
+			"date": function(value, columnOpts, grid) {
+				if(grid.opts.editing) {
+					return {
+						cellClass: "editable input",
+						cellValue: "<input class='datepicker' type='text' value='"+value+"'/>"
+					}
+				}
+			},
+			"checkbox": function(value, columnOpts, grid) {
+				if(grid.opts.editing) {
+					var checked = value == 1  ? "checked" : "";
+					return {
+						cellClass: "editable center",
+						cellValue: "<input type='checkbox' "+checked+" value='"+value+"'/>"
+					}
+				}
+			},
+			"image": function(value, columnOpts, grid) {
+				return {
+					cellClass: "center",
+					cellValue: "<img src='"+value+"'/>"
+				}
+			},
+			"money": function(value, columnOpts, grid) {
+				return {
+					cellClass: "",
+					cellValue: "$"+value
+				}
+			},
+			"select" : function(value, columnOpts, grid) {
+				var select = grid.selects[columnOpts.col],
+					options = "";
+				for(i in select) {
+					if(value == i) {
+						options += "<option selected value='"+i+"'>"+select[i]+"</option>";
 					} else {
-						// create pluginlett of custom callback
-						$.fn[property] = value;
-						//$.data($grid,property,true);
-						$grid.data(property,true);
+						options += "<option value='"+i+"'>"+select[i]+"</option>";
 					}
+				}
+				
+				return {
+					cellClass: "editable input select",
+					cellValue: "<select>"+options+"</select>"
+				}
+			}
+		},
+		
+		// internal properties
+		sbWidth : 0,
+		start : 0,
+		end : 0,
+		totalRows : 0,
+		aColumnHeight :0,
+		gridHeight : 0,
+		$columns : null,
+		$cols : null,
+		firstLoad : true,
+		
+		// *********************************************************************************
+		// *********************************************************************************
+		// ** PRIVATE METHODS
+		// *********************************************************************************
+		// *********************************************************************************
+
+		_construct : function() {
+			
+			// NOTE: anything done in here will only ever be done when the grid is first created
+			var $table = $(this.el);
+			
+			// wrap the table with a div called columns. Jquery wrap doesnt work
+			var $columns = $("<div class='columns'></div>");
+			
+			// wrap the columns with a div called gridWrapper. Jquery wrap doesnt work
+			// this will be our main html element
+			var $wrapper = $("<div class='gridWrapper'><span class='gridLoading'>Loading</span></div>");
+			$wrapper.insertAfter($table)
+					.append($columns)
+					.width(this.opts.width)
+					
+			// its cheaper to alter the stylesheet via JS instead of each cell after load
+			if(this.opts.rowHeight) {
+				var ss = document.styleSheets;
+				for(var i=0;i<ss.length;i++) {
+					if(ss[i].title == "openJsGrid") {
+						for(var j=0;j<ss[i].rules.length;j++) {
+							var r = ss[i].rules[j];
+							if(r.selectorText == "div.gridWrapper .columns .cell") {
+								r.style.height = this.opts.rowHeight + "px";
+							}
+							// and this doesn't really need to be here could be in JS
+							// this probably should read the padding so it knows what to add
+							if(r.selectorText == "div.gridWrapper .columns .cell:nth-child(2)") {
+								r.style.marginTop = this.opts.rowHeight + 15 + "px";
+							}
+						}
+					}
+				}
+			}
+			
+			// reset our elemeng to the new wrapper, and restore the instance on the DOM
+			this.el = $wrapper[0];
+			this.el.instance = this;
+			
+			// lets add our grid resizer block
+			$wrapper.append("<div class='gridResizer'></div>");
+			
+			var self = this,
+				$grid = $(this.el),
+				table = $table[0],
+				$ths = $table.find("th");
+			
+			// so we can access all grids from the outside
+			window.grids.push(this);
+			
+			// lets take the attributes from the table element and store them
+			this._attrsToProps(table,this.opts);
+			
+			// take the columns you want and store them in a comma sep list (easy to send to ajax)
+			this.cols = $table.find("th").map(function() {return $(this).attr("col")}).get().join(",");
+			
+			// define this object on THIS instance
+			this.columns = {};
+			
+			// loop through THs and store properties in an object
+			for(var i=0;i<=$ths.length;i++) {
+				if($ths.eq(i).length) {
+					var $col = $ths.eq(i),
+						col = $col[0],
+						colName = col.getAttribute("col");
+					this.columns[colName] = {header : $col.text()};
+					this._attrsToProps(col,this.columns[colName]);
+				}
+			}
+			
+			// we dont need no damn tables
+			$table.remove();
+			
+			// store some stuff we need
+			this.sbWidth = this._calculateScrollbarWidth();
+
+			// call the load when the object is built
+			this.load();
+			
+			
+			//////////// EVENTS
+			
+			
+			// save event
+			if(this.opts.editing) {
+				$grid._on("click",".gridSave:not(.disabled)", self.saveRow, self);
+				$grid.on("click",".gridSave.disabled", function(){ return false });
+        	
+				// as you type, keep the object up to date
+        		$grid._on("keyup",".cell :input", self.markForSaving, self);
+        		
+        		// datepicker choose (datepicker is optional)
+        		$grid._on("change",".cell :input.datepicker", self.markForSaving, self);
+        		
+        		// datepicker choose (datepicker is optional)
+        		$grid._on("change",".cell select", self.markForSaving, self);
+        	}
+        	
+        	// add custom cell types if needed
+        	if(this.opts.cellTypes) {
+        		this.extend(this.cellTypes,this.opts.cellTypes);
+        	}
+        	
+        	// as you type, keep the object up to date
+        	$grid._on("click",".cell", self._handleCellClick, self);
+			
+			// checkbox saving
+			$grid._on("click",".cell .rowCheck", self.markForSaving, self);
+			
+			// as you type, keep the object up to date
+        	$grid._on("click",".headerCell", self.sort, self);
+        	
+        	// row hover
+        	//$grid._on("mouseover",".cell[data-row]",self.rowHover,self);
+        	//$grid._on("mouseout" ,".cell[data-row]",self.rowHoverOut,self);
+        	
+        	// grid resizer
+        	$grid._on("mousedown",".gridResizer", self._gridResize, self);
+        	
+        	// col resizers
+        	var rs = ".headerCell .resizer";
+        	$grid._on("mousedown", rs, self._columnResize, self).on("click",rs, function(e) {
+        		// stop the header cell from being clicked
+        		e.stopPropagation();
+        	});
+        	
+        	// delete button
+        	if(this.opts.deleting) {
+        		$grid._on("click","button.gridDeleteRow", self.deleteRow, self);
+        	}
+		},
+		
+		
+		/*******
+			
+			I think this function is finally done.  No matter what your table padding, border,
+			cell padding, cell border, whatever, scrollbars or not. The math should always make it perfect
+			honestly, many days went into this math, and i'm quite proud of it. The whole grid comes down to this
+			function, and it being fast. Trying to optimize this as much as possible
+		
+		*******/
+		_equalize : function() {
+			var $grid = $(this.el),										// our grid
+				$columns = this.$columns,								// single columns container
+				$cols = this.$cols,										// collection of each column
+				nCols = $cols.length,									// how many columns
+				totalNCols = nCols,
+				gridHeight = this.gridHeight,							// height of the grid
+				sbWidth = this.sbWidth,									// scrollbar width
+				minAllowedColWidth = this.opts.minAllowedColWidth,		// minium allowed width for columns		
+				needsScrollbar = this.aColumnHeight > gridHeight,		// if 1 column height is > grid height, we need to account for scrollbar
+				sbWidth = needsScrollbar ? sbWidth : 0,					// use sbwidth or 0 if we needed a scroll bar
+				columns = this.columns,									// our columns object
+				colName, col, i, name, customWidth, colwidth;			// extra vars
+			
+				var originalWidth = $grid.width(),						// current width of the grid
+					fullWidth = originalWidth - sbWidth,	 			// adjust width to scrollbar so we know how much space to fill
+					oFullWidth = fullWidth;
+			
+			// adjust number of columns and full width to reflect manually set widths
+			for(colName in columns) {
+				col = columns[colName];
+				if(typeof col.width != "undefined") {
+					if(fullWidth - parseInt(col.width) > minAllowedColWidth) { 
+						// adjust width for custom width cells
+						fullWidth -= parseInt(col.width);
+						// no longer count this cell
+						nCols--;
+					} else {
+						// if we set this to undefined, it will now be used in the standard distribution
+						columns[colName].width = undefined;
+					}
+				}
+			}
+			
+			for(i=0, l = $cols.length; i<l; i++) {
+				col = $cols[i];
+				name = col.getAttribute("col");
+				customWidth = (
+					typeof columns[name] != "undefined" && 
+					typeof columns[name].width != "undefined"
+				),
+				colWidth = customWidth ? parseInt(columns[name].width) : fullWidth / nCols;
+				// last col needs to be minus 1
+				if(i == l-1) colWidth--
+				col.style.width = colWidth + "px";
+			}
+			
+		},
+		
+		// resize event for each column
+		_columnResize : function(e,el) {
+			var self = this,
+				$grid = $(self.el),
+				startX = e.clientX,
+    			$cell = $(el).parent(),
+    			cell = $cell[0],
+    			col = cell.getAttribute("col");
+    		
+    		// prevent selections
+	    	$grid.addClass("resizing");
+    		
+    		// store this so we dont have to access the dom anymore
+    		self.columns[col].width = $cell.width();
+
+    		// COLUMN RESIZING
+    		$(document).bind("mouseup.grid",function() {
+    			$(document).unbind("mousemove.grid");
+    			$grid.removeClass("resizing");
+    			self._equalize();
+    		});
+    		var d;
+    		$(document).bind("mousemove.grid",function(e) {
+	    		// manipulate the stored width
+				self.columns[col].width += (e.clientX - startX);
+				// adjust the header cell width so it can affect the others
+				startX = e.clientX;
+				// adjust the rest, except the header cell
+				self._equalize();
+    		});
+		},
+		
+		// resize method for the entire grid
+		_gridResize: function(e,el) {
+			// starting pos
+    		var self = this,
+    			startX = e.clientX,
+    			$grid = $(self.el);
+    		
+    		// turn off selection while resizing
+    		$grid.addClass("resizing");
+    		
+    		$(document).bind("mouseup.grid",function() {
+    			$(document).unbind("mousemove.grid");
+    			$grid.removeClass("resizing");
+    			self._equalize();
+    		});
+    		
+    		$(document).bind("mousemove.grid",function(e) {
+    			$grid.width( $grid.width() + (e.clientX - startX) );
+				// adjust the header cell width so it can affect the others
+				startX = e.clientX;
+				// if the width is tiny, add the small class
+				if($grid.width() < 600) {
+					 $grid.addClass("small");
+					 self.pager.slider.update();
+				} else if($grid.hasClass("small")) {
+					$grid.removeClass("small");
+					self.pager.slider.update();
+				}
+				// adjust the rest, except the header cell
+				self._equalize();
+    		});
+		},
+		
+		// often will be the case that browsers have different scrollbars
+		// this trick calculates that size
+		_calculateScrollbarWidth : function() {
+			var div = $('<div><div style="height:100px;"></div></div>').css({
+				width:50,
+				height:50,
+				overflow:"hidden",
+				position:"absolute",
+				top:-200,
+				left:-200
+			});
+			$('body').append(div); 
+			var w1 = $('div', div).innerWidth(); 
+			div.css('overflow-y', 'auto'); 
+			var w2 = $('div', div).innerWidth(); 
+			$(div).remove(); 
+			var scrollbarWidth = (w1 - w2);
+			return scrollbarWidth;
+		},
+	
+	
+		_attrsToProps : function(el,obj) {
+			// takes all the attributes on some dom element and stores them 
+			// as properties onto some other object
+			// im making this a method, cuz we will need to do this again for THs
+			var attrs = el.attributes;
+			for(var i=0, l=attrs.length; i<l;  i++ ) {
+				obj[attrs[i].name] = attrs[i].value;
+			}
+			return obj;
+		},
+		
+		// after load is done, we do these things
+		_afterLoad : function() {
+			var self = this,
+				$grid = $(this.el);
+			
+			// call to create the pager
+			if(!this.pager) {
+				this.pager = Pager.inherit({grid : this});
+			} else {
+				this.pager.update();
+			}
+			
+			/////////////////////////
+			// ADD CHECKBOX COLUMN
+			////////////////////////
+			if(this.opts.checkboxes) {
+				// add the column with a width
+				var $checkboxCol = this.addColumn("Checks", {
+					width: 35, 
+					insertAt: 0, 
+					header : "&nbsp;",
+					cellClass : "center"
+				}, function(i) {
+					return "<input class='rowCheck' type='checkbox'/>";
+				})
+			}
+			
+			/////////////////////////
+			// ADD ROW NUMBER COLUMN
+			////////////////////////
+			if(this.opts.rowNumbers) {
+				// add the column with a width
+				var $newCol = this.addColumn("rowNumbers", {
+					width: 35, 
+					insertAt: 0, 
+					header : "&nbsp;",
+					cellClass : "center"
+				}, function(i) {
+					return i + 1;
+				})
+			}
+			
+			/////////////////////////
+			// ADD DATEPICKER STUFF
+			////////////////////////
+			if($.datepicker && $(".datepicker").length) {
+				$(".datepicker").datepicker({dateFormat: "yy-mm-dd"});
+			}
+			
+			/////////////////////////
+			// ADD DELETE BUTTON COLUMN
+			////////////////////////
+			if(this.opts.deleting) {
+				
+				// add the column with a width
+				var $deleteCol = this.addColumn("Delete", {width: 65, cellClass : "center"}, function() {
+					return self._render("deleteButton")();
+				})
+			}
+			
+			/////////////////////////
+			// ADD SORTABLE BAR THING
+			////////////////////////
+			var $sortBar = $(this.el).find(".headerCell[col='"+this.opts.orderBy+"']").find(".sortbar").show();
+			if(this.opts.sort == "desc") $sortBar.addClass("desc");
+			
+			/////////////////////////
+			// SET THE BLANK CELL HEIGHT TO MATCH
+			////////////////////////
+			var headerHeight = $grid.find(".headerCell:first").height();
+			$grid.find(".blankCell").css({
+				height: headerHeight
+			});
+			
+			// what happens after ajax, stays after ajax.
+			this._cacheSize();
+			this._equalize();
+			
+			// were done loading, close the notification
+			self.loadingDialog.close();
+			
+			// mark first load
+			this.firstLoad = false;
+
+		},
+		
+		// stores up the current size and variables for equalize
+		// only call this to recache
+		// dont call this if the grid is gonna reload, itll get called anyway
+		_cacheSize : function() {
+			var $grid = $(this.el);
+			this.$columns = $grid.children(".columns");
+			this.$cols = this.$columns.children(".col");
+			this.aColumnHeight = this.$columns.children(".col:first").height();
+			this.gridHeight = $grid.height();
+			
+		},
+		
+		// because there is no true concept of a row,
+		// we need to run this call both rowClick and cellClick
+		_handleCellClick : function(e,el) {
+			var id = el.getAttribute("data-row"),
+				rowData= this.rows["_"+id];
+			// row check
+			if($(e.target).hasClass("rowCheck")) {
+				$(this.el).trigger("rowCheck", [$(e.target),rowData]);
+			}
+			// trigger cell click
+			$(this.el).trigger("cellClick", [$(el),rowData]);
+			// trigger row click
+			$rows = this.getRow(id);
+			// this isn't sending the array?
+			
+			$(this.el).trigger("rowClick", [$rows,rowData]);
+		},
+		
+		// template render
+		_render : function (template) {
+			var self = this;
+	        return function (data) {
+	        	//  Caches the template so that it may be manipulated.
+	        	var temple, regex = /{{([\w\.]+)}}/g;
+	        	
+	            // use template as string if its not defined
+	            if(typeof self._templates[template] == "undefined") {
+	            	temple = template;
+	            
+	            // use pre defined template
+	            } else {
+		            temple = self._templates[template];
+		        }
+		        
+	            // template replacement
+	            temple = temple.replace(regex, function(match, $1) { return data[$1] });
+	            //  Get rid of any remaining, unused variables before returning.
+	            return temple.replace(regex, '');
+	        };
+	    },
+	    
+		// html templates
+		_templates : {
+			deleteButton : "<button class='gridDeleteRow btn btn-mini'>X</button>",
+			cell : "<div class='cell {{cl}} grid-row-{{id}}' data-row='{{id}}' data-col='{{col}}'>{{val}}</div>",
+			columnHeader : "\
+				<div class='cell headerCell' col='{{col}}'>\
+					<span>{{header}}</span>\
+					<div class='resizer'></div>\
+					<div class='sortbar'>&#9662;</div>\
+				</div>\
+				<!--<div class='cell blankCell' col='{{col}}'>Blank</div>-->\
+			",
+			confirm : "\
+				<div class='dialog gridConfirm'>\
+					<span>{{msg}}</span>\
+					<div class='buttons'>\
+						<button class='btn confirmOk'>OK</button>\
+						<button class='btn cancel'>Cancel</button>\
+					</div>\
+				</div>\
+			",
+			alert : "\
+				<div class='dialog gridAlert {{type}}'>\
+					<span class='label label-{{type}}'>{{title}}</span>\
+					<span class='body'>{{msg}}</span>\
+					<div class='buttons'>\
+						<button class='btn cancel'>OK</button>\
+					</div>\
+				</div>\
+			",
+			notify : "\
+				<div class='dialog gridNotify'>\
+					<span class='body'>{{msg}}</span>\
+				</div>\
+			",
+			pager : "\
+				<div class='pagination left'>\
+				  <ul>\
+				  	<li class='disabled'>\
+				  		<a href='#' class='pager_showing'>showing \
+				  			<span class='pager_lower_limit'>{{start}}</span> - \
+				  			<span class='pager_upper_limit'>{{end}}</span>\
+				  		</a></li>\
+				    <li class='gridPrev'><a href='#'>Prev</a></li>\
+				    <li class='gridNext'><a href='#'>Next</a></li>\
+				    <li class='slider'><span class='sliderSpan'>\
+				    	<div class='slider'>\
+				    		<div class='sliderTrack'></div>\
+				    		<div class='sliderThumb'></div>\
+				    	</div>\
+				    </span>\
+				    <li class='currentPage'><input type='text' value='{{page}}'/></li>\
+				    <li class='search icon'><input type='text' value='{{search}}'/></li>\
+				  </ul>\
+				</div>\
+				<div class='right'>\
+					<a class='disabled gridSave btn btn-primary' href='#'>Save</a>\
+				<div>\
+			"
+		},
+		
+		// *********************************************************************************
+		// *********************************************************************************
+		// ** PUBLIC METHODS
+		// *********************************************************************************
+		// *********************************************************************************
+		
+		// IDEA - ONLY EVER KEEP 30 ROWS ON THE DOM, REMOVE TOP AND BOTTOM ROWS AND STORE IN MEMORY
+		// ONLY CREATE 30 ROWS AT A TIME, NEVER MORE. FILTERING IS ALREADY DONE ON MEMORY, BUT WOULD NEED
+		// TO ADD BACK ROWS THAT ARE IN MEMORY AND NOT IN THE DOM, SHOULD BE EASY.
+		
+		// public methods
+		load : function(opts) {
+			var self = this, packet, promise, rowHtml = "", colHtml = "", 
+				col = 0, key = 0, pKey, rowCol = 0, cellValue, checked = 0,
+				cellClass = "", type;
+
+			// if we are reloading with options pass them in
+			// if(opts) this.grid(opts);
+			if(opts) this.opts = this.extend(this.opts,opts);
+			
+			// register loadStart callback
+			$(this.el).trigger("loadStart");
+			
+			// we have some more data than in this.opts that we wanna send to ajax
+			packet = $.extend({
+				cols : this.cols
+			},this.opts);
+			
+			// cache the el because self.el changes some where?
+			var el = self.el
+			
+			// show loading box
+			this.loadingDialog = this.notify("Loading");
+
+			/////////////////////////
+			// LOAD SELECT BOXES
+			////////////////////////
+			var selCol, colName, selectCols = [], selectPromise = false;
+			for(colName in this.columns) {
+				selCol = this.columns[colName];
+				if(typeof selCol.type != "undefined" && selCol.type == "select") {
+					selectCols.push(colName);
+				}
+			}
+			// get all the drop downs, store the promise in case we wanna check this
+			if(selectCols.length) {
+				selectPromise = $.post(this.opts.action,{select : true, cols : selectCols},function(data) {
+					self.selects = data;
 				});
 			}
 			
-			// set dimensions here
-			$grid.parents(".gridContainer").width($grid.data().width);
-			$grid.parents(".gridContainer").height($grid.data().height);
-			$grid.parents(".gridWrapper").css("max-height",$grid.data().maxHeight);
-			
-			// if you got block ui, block with loading
-			if($.blockUI) $grid.block({ message: $grid.data().loadingMessage });
-			
-			// move the header row outside of the table so it sticks
-			var $headerRow = $grid.moveHeaderRow();
-			
-			
-			// set any attributes as column options
-			// this is so nice
-			// make sure its not already been done
-			if(!$grid.data().objectized) {
-				$headerRow.find("th").each(function() {
-					var $th = $(this);
-					// if there are more than just the col attribute
-					if($th[0].attributes.length > 1) {
-						// loop through attributes
-						$.each($($th[0].attributes), function(index) {
-							var prop = $th[0].attributes[index].name;
-							var val = $th[0].attributes[index].value;
-							// is columnOpts set at all?
-							if(!$grid.data().columnOpts) $grid.data("columnOpts",{});
-							// are there already some options for this col?
-							if(!$grid.data().columnOpts[$th.attr("col")]) $grid.data().columnOpts[$th.attr("col")] = {};
-							// add this option
-							$grid.data().columnOpts[$th.attr("col")][prop] = val;
-						});	
-					}
-				});
-				$grid.data("objectized",true);
-			}
-			
-			// add the pager if its not there
-			if($grid.data().pager) var $pager = $grid.createPager();
-			
-			// add the title bar if you should
-			if($grid.attr("title") && !$grid.parents(".gridContainer").find(".gridTitle").length) {
-				$grid.parents(".gridContainer").prepend("<div class='gridTitle'>"+$grid.attr("title")+"</div>");
-				// add the add button if its on and the title bar is there
-					if($grid.data().adding) {
-						$grid.parents(".gridContainer").find(".gridTitle").append("<div class='gridButton gridAdd'><div>Add</div></div>");
-						$grid.parents(".gridContainer").find(".gridAdd").click(function() {
-							// find which fields are editable
-							var cols = new Array(); 
-							$.each($grid.data().columnOpts,function(col,opts) {
-								if(opts.editable) cols.push(col);
-							});	
-							// ajax add the row
-							$.post($grid.attr("action"),{
-								"add":true,
-								"cols":cols
-							}, function(primaryKey) {
-								// reload the grid but order by the primary key
-								// that way our new row is on top
-								$grid.loadGrid({
-									order_by : primaryKey,
-									sort : "DESC"
-								});
-							});
-						});
-						
-					// add button if its being routed	
-					} else if ($grid.data().addButton) {
-						$grid.parents(".gridContainer").find(".gridTitle").append("<a href='"+$grid.data().addButton+"' class='gridButton gridAdd'><div>Add</div></a>");
+			promise = $.post(this.opts.action,packet,function(data) {
+				self.el = el;	// fixes some problem i dont know :(
+				
+				var $grid = $(self.el),
+					$columns = $grid.find(".columns");
+				
+				// store some data we got back
+				self.totalRows = data.nRows;
+				self.start = data.start;
+				self.end = data.end;
+				self.saveable = data.saveable;
+
+				self.opts.orderBy = data.order_by;
+				self.opts.sort = data.sort;
+				
+				// were gonna build the table in a string, then append it
+				// this is 1000000x times faster than dom manipulation
+				self.rows = data.rows;
+				
+				// build the table in column form, instead of row form
+				for(col in self.columns) {
+					
+					// options on the column
+					colOpts = self.columns[col];
+					
+					// opening col div
+					colHtml += "<div class='col _"+(colOpts.type || '')+"' col='"+col+"'>";
+					
+					// blank cells mess things up
+					if(colOpts.header == "") colOpts.header = "&nbsp;"
+					
+					// add header cell with resizer, sortable bar and blank cell
+					// this is only the header and not the whole column because we want the ability
+					// to keep adding strings to the return for speed
+					colHtml +=  self._render("columnHeader")(colOpts);
+					
+					// cache this outside the loop
+					var setupTypes = function() {
+						if(typeof self.cellTypes[colOpts.type] == "function") {
+							typeOpts = self.cellTypes[colOpts.type](cellValue,colOpts,self);
+							
+							// protect a no return
+							if(typeof typeOpts == "undefined") typeOpts = {cellValue : cellValue,cellClass: ""};
+							
+							cellValue = typeOpts.cellValue;
+							cellClass = typeOpts.cellClass;
+						}
 					}
 					
-			}
-			
-			// go full screen?
-			if($grid.data().fullScreen) {
-				$grid.parents(".gridContainer").width("100%");
-				$grid.parents(".gridContainer").find(".gridHeaderRow").width("100%");
-				$grid.parents(".gridWrapper").css("max-height","none");
-				var trHeight = parseInt($grid.find("tr:last").css("height"));
-				var cellPadding = parseInt($grid.parents(".gridContainer").find(".gridHeaderRow th:first").css("padding-top"));
-				$grid.css("margin-bottom",trHeight + cellPadding);
-				$pager.addClass("fixed");
-				
-				$(window).resize(function() {
-					$grid.equalizeColumns();
-				});
-			}
-			
-			// make the grid resizable...
-			if($grid.data().resizable) $grid.makeResizable();	
-			
-			// add columns to data
-			$grid.data("cols",$grid.getHeaderRow().find("th[col!='X'][col!='#'][col!='+']").attrJoin("col"));
-			
-			// method before load start
-			if($grid.data().beforeLoadStart) $grid.beforeLoadStart();
-			
-			// get the data via ajax
-			$grid.data("gridLoading",true);
-			$.post($grid.attr("action"),$grid.data(), function(data, status, xhr) {
-				
-				// method load start
-				if($grid.data().loadStart) $grid.loadStart();
-				
-				// set flag that loading is done
-				$grid.data("gridLoading",false);
-				
-				// store total number of rows
-				$grid.data("totalRows",data.nRows);
-				$grid.data("firstRowShowing",data.start);
-				$grid.data("lastRowShowing",data.end);
-				$grid.data("rowData",{});
-				
-				// make sure the nRows box agrees
-				//console.log($grid.find(".nRowsShowing"));
-				//$grid.find(".nRowsShowing").val(data.nRows);
-				
-				// add colData (information about columns) to the columnOpts object
-				if(data.colData) {
-					$.each(data.colData,function(col,opts) {
-						$.each(opts,function(opt,val) {
-							if($grid.data().columnOpts[col]) {
-								$grid.data().columnOpts[col][opt] = val;
-							}	
-						});
-					});
-				}
+					for(key in data.rows) {
+						pkey = key.substr(1);
+						row = data.rows[key];
+						for(rowCol in row) {
+							if(rowCol === col) {
 								
-				// status updates
-				// using the order by column name - get the name
-				if($grid.data().pager) {
-					var sortName = $grid.getHeaderRow().find("th[col="+data.order_by+"]").text();
-					// prevent from showing rows beyond what is actually there
-					if(data.end > data.nRows) data.end = data.nRows;
-					$pager.find(".gridTotal").html("\
-						"+data.start+" - "+data.end+" of <span class='nRows'>"+data.nRows+"</span> by "+sortName+" "+data.sort
-					);
-					// when you click nRows load the grid with all the rows
-					$(".nRows").click(function() {
-						$(this).parents(".gridContainer").find(".grid").loadGrid({
-							nRowsShowing:$(this).html()
-						});
-					});
-				}
-				
-				// start with fresh rows
-				$grid.find("tr").remove();
-				$grid.getHeaderRow().find("th[col='#'],th[col='X'],th[col='+']").remove();
-				
-				var $ths = $grid.getHeaderRow().find("th");
-				if(data.rows && data.rows.toString() == "[object Object]") {
-					// do we have a row click?
-					var rowClick = opts.rowClick ? opts.rowClick : null;
-					// add the new rows
-					$.each(data.rows,function(primaryKey,row) {
-						// primary key has an _ infront becuase of google chrome re ordering JSON objects
-						//http://code.google.com/p/v8/issues/detail?id=164
-						primaryKey = primaryKey.substr(1);
-						
-						// make sure the row ins't stuck up at the top
-						if(!$grid.getHeaderRow().find("[primary_key="+primaryKey+"]").length) {
-							var $newRow = $("<tr primary_key='"+primaryKey+"'>");
-							// if we have a click - click this row
-							if(rowClick) $newRow.click(rowClick);
-							// loop through columnOpts (which are the columns you defined in the <table>
-							$.each($grid.data().columnOpts,function(col,opts) {
-								var cell = row[col];
-								// money?
-								if(opts.currency) {
-									cell = formatMoney(cell,opts.currency);
-								}
-								// add this data to our columnOpts object for this col
-								$grid.data().columnOpts[col].value = cell;
+								// main value
+								cellValue = row[col],
+								cellClass = "";
 								
-								// image replacment
-								if(opts.type && opts.type == "image") {
-									cell = "<img style='width:100%' src='"+cell+"'/>";
-									var $thisTh = $grid.getHeaderRow().find("th[col="+col+"]");
-									if(!$thisTh.attr("width")) $thisTh.attr("width",100);
+								// setup the 3rd party types. Make sure that if we had drop downs
+								// that we let the ajax for that be done first
+								selectPromise ? selectPromise.done(setupTypes) : setupTypes();
+								
+								// empty cells kinda mess with things
+								if(cellValue == "") cellValue = "&nbsp;";
+									
+								// add linking
+								// this is not a type because you can link anything by adding href
+								if(colOpts.href) {
+									// make some tokens for use in the href
+									var linkTokens = {value : cellValue}
+									// add all the column values, column.Title i.e.
+									for(var aCol in row) linkTokens["columns."+aCol] = row[aCol];
+									// render the href with the tokens
+									var href = self._render(colOpts.href)(linkTokens);
+									// wrap the cell value in an a tag with the rendered href 
+									cellValue = "<a href='"+href+"'>"+cellValue+"</a>";
 								}
 								
-								// link replacement
-								if(opts.link) {
-									// add the link class if its there
-									var link = "<a target='"+opts.linkTarget+"' href='"+opts.link+"'>"+cell+"</a>";
-									// replace tokens
-									link = link.replace("{COL}",col).replace("{VALUE}",cell).replace("{ROWID}",primaryKey);
-									// replace cell back with our new link
-									cell = link;
-								}
-								$newRow.append("<td col='"+col+"'>"+cell+"</td>");
-							});
-							$grid.append($newRow);
-							
-							// in a new object - store ALL data from the PHP return
-							// this can't be in the columnOpts object becuase that needs to directly reflect
-							// the main <table> call.
-							$.each(row,function(col,val) {
-								if(!$grid.data().rowData[col]) $grid.data().rowData[col] = [];
-								$grid.data().rowData[col].push({value:val});
-							});
-						}
-					})	
-				} else {
-					$grid.append("<tr><td colspan=100>No Rows</td></tr>");
-				}
-				
-				// now that rows have been added - go through and replace link tokens that had to do with other columns
-				$.each($grid.data().columnOpts,function(col,opts) {
-					// only check those with links
-					if(opts.link) {
-						// look at each of their TDs
-						$grid.getCol(col).getTdsFromTh().each(function() {
-							var $aTag = $(this).find("a");
-							// we wanna replace the href
-							var link = $aTag.attr("href");
-							// we wanna go back to the row and search all the TDs in this row
-							var $tr = $(this).parents("tr");
-
-							// this is a really stupid way of doing this but for some reason i can't match
-							// groups globally... whatever this works.
-							// start by getting all tokens to match there might be many in one link
-							var searchCol = link.match(/\[([\w]+)\]/g);
-							if(searchCol) {
-								// go through each of those matches (which still have the [] stuipidly enough)
-								$.each(searchCol,function(i,scol) {
-									// we need to now strip that [] and get just the column name
-									var res = scol.match(/\[([\w]+)\]/);
-									var columnName = res[1];
-									// using the column name - go into rowData and get the value
-									// using rowData the column doesn't need to exist
-									var rowIndex = $tr.prevAll().length;
-									link = link.replace("["+columnName+"]",$grid.data().rowData[columnName][rowIndex].value);
-									// replace it back
-									$aTag.attr("href",link);
+								// create the cell from template
+								colHtml += self._render("cell")({
+									cl : cellClass,
+									id : pkey,
+									col : col, 
+									val : cellValue
 								});
-							}	
-						});
+							}
+						}
 					}
-				});									
-				
-				// if any width attributes are set, set them again
-				// thats because they were deleted when the new rows came in
-				$grid.getHeaderRow().find("th").each(function(i) {
-					if(w=$(this).attr("width") ) {
-						var w = parseInt($(this).attr("width"));
-						$grid.find("tr:first td").eq(i).css("width",w)
-					}
-				});
-				
-				// setup inline editing - requires pager for save button
-				if($grid.data().inlineEditing) $grid.setupInlineEditing();
-				
-				// add date picker if you can
-				try{
-					$(".datepicker").datepicker( {
-						dateFormat: $grid.data().dateFormat
-					});
-				} catch(e) {}
-				
-				// only add these extra columns if we have some rows
-				if($grid.data().totalRows > 0) {
-					// setup row count
-					if($grid.data().showRowNumber) $grid.createRowCount();
-				
-					// setup delete row
-					if($grid.data().deleting) $grid.createDeleteColumn();
-				} else {
-					// don't show the save button if there are no rows
-					$grid.parents(".gridContainer").find(".gridSave").fadeOut();
-				}	
-				
-				// hide hidden rows
-				$grid.hideHiddenCols();
-				
-				// equalizes the columns now that new rows exist
-				// and since the headers are in a different table
-				$grid.equalizeColumns();
-				
-				if($.blockUI) $grid.unblock();	
-				
-				// if there is a callback use that
-				if($grid.data().loadComplete) $grid.loadComplete();
-				
-			},"json");
-		});
-	}
-	
-	// typing will filter the grid - hitting enter will submit to ajax
-	// this sucks in firefox
-	$(".gridSearch input[type=text]").live("keyup",function(e) {
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		// don't filter if you just searched
-		if($grid.data().justSearched == false) {
-			var search = $(this).val();
-			var $grid = $(this).parents(".gridContainer").find(".grid");
-			// make sure what you type goes into all instances of the box
-			$grid.parents(".gridContainer").find(".gridSearch input").val(search);
-			var $trs = $grid.find("tr");
-			$trs.each(function() {
-				// make sure to search editable values as well
-				var editableVals = "";
-				$(this).find("input").each(function() {
-					editableVals += $(this).val().toLowerCase();
-				});
-				var haystack = $(this).text().toLowerCase() + editableVals;
-				var needle = search.toLowerCase();
-				if(haystack.lastIndexOf(needle) == -1) {
-					$(this).fadeOut();
-				} else {
-					$(this).fadeIn();
+					colHtml += "</div>";
 				}
-			});
-		} else {
-			// set this to false so that filtering will work again
-			$grid.data("justSearched",false);
-		}		
-	// hitting enter will submit the search to ajax	
-	}).live("keydown",function(e) {
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		// if we don't limit this to at least 3, you get some HUGEly long queries
-		if(e.keyCode == "13" && ($(this).val().length > 2 || $(this).val().length == 0)) {
-			$grid.data("justSearched",true);
-			$grid.loadGrid({
-				search:$(this).val(),
-				page:1
-			});
-		}
-	});
-	
-	// change the number of visible rows by hitting enter on the field
-	$(".nRowsShowing").live("keydown",function(e) {
-		// we want only numbers > 0 here
-		if(e.keyCode == 13 && parseInt($(this).val()) > 0) {
-			var $grid = $(this).parents(".gridContainer").find(".grid");
-			$grid.loadGrid({
-				nRowsShowing:$(this).val()
-			});
-			e.preventDefault();
-		}
-	}).live("keyup",function(e) {
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		// make sure what you type goes into all instances of the box
-		$grid.parents(".gridContainer").find(".nRowsShowing").val($(this).val());
-	});
-	
-	// clicking on headings will sort those columns	
-	$(".gridHeaderRow th").live("click",function(e) {
+				
+				// hide our loading
+				$grid.find(".gridLoading").hide();
+				
+				// place all the content
+				$columns.html(colHtml);
+								
+				// do things after ajax
+				self._afterLoad();
+				
+				// register loadComplate Callback
+				$(self.el).trigger("loadComplete");
+
+			},"json");
+			
+			return promise;
+		},
 		
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		var cont = true;
-		if($grid.find("tr.toBeSaved").length && $grid.data().confirmBeforeSort) {
-			cont = confirm("You have unsaved changes on the grid, if you continue those changes will be lost. Continue?");
-		}
+		// [none | success | warning | important | info | inverse]
+		// helper dialog alert function
+		alert : function(type, title, msg) {
+			return Dialog.inherit({
+				tmpl : "alert",
+				type: type, 
+				title: title,
+				msg : msg,
+				grid: this
+			}).show();
+		},
 		
-		// don't do this if clicking on a col handle
-		if(!$(e.target).hasClass("colHandle") && cont) {
-			if($grid.data().clickToSort) {
-				// determine the sort order
-				var sort = $grid.data().sort == "DESC" ? "ASC" : "DESC";
-				// store the sort and order into the data for use
-				$grid.loadGrid({
-					"sort":sort,
-					"order_by":$(this).attr("col")
+		// helper dialog notify method
+		notify : function(msg, ms) {
+			var self = this;
+			// our opts
+			var opts = {msg:msg, grid:this};
+			// if we wanted a timer
+			if(ms) opts.autoFadeTimer = ms;
+			// create and show
+			return Dialog.inherit(opts).show();
+		},
+		
+		
+		// shortcut error function
+		error : function(msg) {
+			return this.alert("important", "Error!", msg);
+		},
+		
+		// a confrim dialog box
+		confirm : function(msg, callback) {
+			var $grid = $(this.el);
+			var dialog = Dialog.inherit({
+				tmpl : "confirm",
+				msg : msg,
+				grid : this
+			}).show();
+			
+			// add our confirm ok
+			dialog.$dialog.one("click",".confirmOk",callback);
+			
+			return dialog;
+		},
+		
+		// debouncing the typing
+		_filter : function(e,el) {
+			var self = this,
+				$el = $(el);
+			// store on pager
+			this.pager.query = $el.val();
+			// start typing timer
+			clearTimeout(this.debounce);
+			this.debounce = setTimeout(function() {
+				self.filter( $el.val() )
+			},150);
+		},
+		
+		// finds matches in the dom as fast as i know how
+		// do intelligent searches with column:
+		// right click a column header and choose "search on" which would fill out the search filter
+		filter : function(val) {
+			var $grid = $(this.el),
+				$all = $grid.find("[data-row]"),
+				$cols = $grid.find(".col");
+				
+			if(val) {
+				var matches = [],
+					val = val.toLowerCase();
+				for(id in this.rows) {
+					var row = this.rows[id],
+						id = id.substring(1);
+					for(key in row) {
+						var string = row[key].toLowerCase();
+						if(~string.indexOf(val) && !~matches.indexOf(id)) matches.push(id);
+					}
+				}
+				
+				$all.hide();
+				$all.removeClass("topMargin");
+
+				if(matches.length) {
+					$(".cell.temp").remove();
+					for(i=0;i<matches.length;i++) {
+						// test with jsperf
+						$grid.find(".grid-row-"+matches[i]).show();
+					}
+					// because the css for nth-child(2) isn't math accurate anymore with hidden rows
+					// we need to find the nth-child(2) ourselves for search results. But we keep the css when all are showing
+					// since thats the most  used case
+					$cols.find(".cell:visible:eq(1)").addClass("topMargin");
+				} else {
+					$cols.append("<div class='cell temp'>&nbsp;</div>");
+				}
+			} else {
+				$all.show();
+				$all.removeClass("topMargin");
+			}
+			// we need to recache the scroll height account for scrollbars
+			
+			//this.scrollHeight = $grid.find(".columns")[0].scrollHeight;
+			//console.log($grid.find(".col:first").height());
+			//console.log("calling equalize");
+			this.aColumnHeight = $grid.children(".columns").children(".col:first").height();
+			this._equalize();
+		},
+		
+		// adds a column with options to the grid
+		// runs a function on the value so you can pass in as it builds
+		// opts : {width, insertAt, cellClass}
+		addColumn : function(col, opts, fn) {
+			
+			// if it already exists delete it
+			if(this.colExists(col)) {
+				$(this.el).find(".col[col='"+col+"']").remove();
+			}
+			
+			// create the new column from template
+			var newCol = "<div class='col' col='"+col+"'>",
+				$newCol,pkey;
+			
+			// column header stuff
+			var header = opts.header || col;
+			newCol += this._render("columnHeader")({col : col, header : header});
+			
+			// if the value fn wasn't passed, use blank
+			if(typeof fn != "function") fn = function(i) { return "&nbsp;" }
+
+			// add in rows;
+			var i = 0;
+			for(key in this.rows) {
+				pkey = key.substr(1);
+				newCol += this._render("cell")({
+					cl : opts.cellClass || "",
+					id : pkey,
+					col : col,
+					val : fn(i)
 				});
-			}	
+				i++;
+				
+			}
+			// cap off our col
+			newCol += "</div>";
+			 
+			// DOMit
+			$newCol = $(newCol);
+			
+			// add to the DOM
+			this._insertCol($newCol,opts.insertAt);
+			
+			// if we passed in options, add those to the columns object
+			if(!opts) opts = {}; this.columns[col] = opts;
+			
+			// resize with our new column
+			this._cacheSize();
+			this._equalize();
+			
+			// return new col
+			return $newCol;
+
+		},
+		
+		/*
+		addRow : function() {
+			var $grid = $(this.el),
+				$cols = $grid.find(".col"),
+				i = 0,
+				col = null,
+				$col = null,
+				$cell = null;
+			
+			for(i=0; i<$cols.length; i++) {
+				col = $cols[i],
+				colName = col.getAttribute("col"),
+				$col = $(col),
+				$cell = $col.find(".cell:eq(2)");
+				
+				//var $new = $(this._render("cell")({
+				//	cl : "level2",
+				//	id : 0,
+				//	col : colName, 
+				//	val : "&nbsp;"
+				//}));
+				
+				
+				//$new.insertAfter($cell);
+				
+			}
+			
+			
+			
+			// insert new div in first col
+			//var $cell = $grid.find(".col:first").find(".cell.level2");
+			//$cell
+			//.css("overflow","none")
+			//.html("<div class='level2Grid'></div");
+			
+		},*/
+		
+		// insets a column at an index
+		_insertCol : function($col,i) {
+			// beginning
+			if(i === 0 || i == "start") {
+				$(this.el).find(".columns").prepend($col);
+			// end
+			} else if(!i || i == "end") {
+				$(this.el).find(".columns").append($col);     
+			// somewhere
+			} else if(typeof i == "number"){
+				$(this.el).find(".columns > .col:nth-child(" + ++i + ")").before($col);
+			} else {
+				if(typeof this.columns[i] != "undefined") {
+					var k = 0, j;
+					// find the index of this column
+					for(j in this.columns) { k++; if(j === i) break };
+					// insert at that column
+					this._insertCol($col,k);
+				} else {
+					console.log("Trying to inserter after column ["+i+"], not found, inserting at end");
+					this._insertCol($col);
+				}
+			}
+		},
+		
+		// bool if a column exists or not
+		colExists : function(col) {
+			return !(typeof this.columns[col] == "undefined");
+		},
+		
+		/*
+		cellClick : function($cell) {
+			var $tr = $cell.closest("tr"),
+				tr = $tr[0],
+				id = tr.getAttribute("data-row"),
+			rowData= this.rows["_"+id];
+			$(this.el).trigger("cellClick", $cell);
+		},
+		
+		rowClick : function($cells) {
+			$(this.el).trigger("rowClick", $cells);
+		},
+		*/
+		
+		// returns a jQuery object of cells from the passed column
+		getCells : function(col) {
+			if(typeof col == "string") {
+				return $(this.el).find("[col='"+col+"'].cell:not(.headerCell)");
+			} else {
+				return col.find(".cell:not(.headerCell)");
+			}
+		},
+		
+		// gets all the cells from a given row id
+		getRow : function(id) {
+			return $(this.el).find(".grid-row-"+id);
+		},
+		
+		// when you hover a row
+		rowHover : function(e,el) {
+			var id = el.getAttribute("data-row");
+			$(this.getRow(id)).addClass("row-hover");
+		},
+		
+		// row mouse out
+		rowHoverOut : function(e,el) {
+			var id = el.getAttribute("data-row");
+			$(this.getRow(id)).removeClass("row-hover");
+		},
+		
+		deleteRow : function(e,el) {
+			var self = this,
+				$cell = $(el).closest(".cell"),
+				id = $cell[0].getAttribute("data-row");
+			
+			this.confirm("Are you sure you want to delete?", function() {
+				$.post(self.opts.action, {delete:true,id:id}, function(success) {
+					if(success) {
+						// function for timeout
+						var fadeRow = function() {
+							$(this).remove();
+							self.alert("info", "Deleted!", "Row "+id+" has been deleted");
+						}
+						// fade this row out
+						$(self.el).find(".grid-row-"+id).fadeOut(500);
+						// after the fade, remove the row, dont do this in the callback, it will call many times
+						setTimeout(fadeRow,500);
+						
+					} else {
+						self.error("Failed to delete");
+					}
+				});
+			});
+		},
+		
+		// save
+		saveRow : function(e,el) {
+			e.preventDefault();
+			var self = this, i, rows = {};
+			
+			// get the rows we need from the rows object	
+			for(i=0; i< this.toSave.length; i++) {
+				var pkey = this.toSave[i]
+				rows[pkey] = this.rows["_"+pkey];
+			}
+
+			// post save
+			$.post(this.opts.action,{ 
+				save : true, 
+				json : rows,
+				saveable : self.saveable
+			}, function(res) {
+				if(res) {
+					self.alert("info","Saved!","Row "+pkey+" has been saved");
+				} else {
+					self.error("Failed to save");
+				}	
+							
+			});
+		},
+		
+		sort : function(e,el) {
+
+			// hide all sortbars
+			$(this.el).find(".sortbar").hide();
+			
+			// toggle sort and store value
+			var $sortbar = $(el).find(".sortbar"),
+				col = el.getAttribute("col"),
+				sort = $sortbar.show().toggleClass("desc").hasClass("desc") ? "desc" : "asc";
+			
+			// load the grid with new sorting
+			this.load({ sort : sort, orderBy : col });
+		},
+		
+		// updates the row (should be called as you type)
+		markForSaving : function(e,el) {
+			
+			// make sure the save is visible
+			$(this.el).find(".gridSave").removeClass("disabled");
+			
+			// get our row col and val
+			var div = el.parentNode,
+				col = div.getAttribute("data-col"),
+				row = div.getAttribute("data-row")
+				val = el.value;
+			
+			// checkboxes dont need value, they need checked
+			if($(el).hasClass("rowCheck")) val = ~~el.checked;
+			
+			// set the value on the object
+			this.rows["_"+row][col] = val;
+
+			// add the row if its not there
+			if(!~this.toSave.indexOf(row)) this.toSave.push(row);
+		}
+	});
+	
+	var Dialog = Root.inherit({
+		type : "notify",
+		tmpl : "notify",
+		title : "",
+		msg : "",
+		grid : null,
+		autoFadeTimer : false,
+		blur : true,
+		$dialog : null,
+		_timer : 200, // match the css fade
+		_construct : function() {
+			// our grid el
+			var $grid = $(this.grid.el), self = this;
+			// render the type to our templates
+			this.$dialog = $(this.grid._render(this.tmpl)(this));
+			// if our dialog has a button, add an event
+			this.$dialog.find(".cancel,.confirmOk").one("click",function() {
+				self.close();
+			});
+			// add to our grid
+			$grid.append(this.$dialog);
+		},
+		show : function() {
+			// our grid el
+			var $grid = $(this.grid.el), self = this;
+			// blur the bg if needed
+			if(this.blur) $grid.find(".columns").addClass("blur");
+			// show this guy
+			setTimeout(function() {
+				self.$dialog.addClass("show");
+			},50);
+			// setup for auto fade timer
+			if(this.autoFadeTimer) {
+				setTimeout(function() {
+					self.close();
+				},this.autoFadeTimer);
+			}
+			// return
+			return this;
+		},
+		close : function() {
+			var self = this, $grid = $(this.grid.el);
+			// fade out
+			this.$dialog.removeClass("show");
+			// blur out
+			if(this.blur) $grid.find(".columns").removeClass("blur");
+			// kill the element after x time
+			setTimeout(function() {
+				// remove the element
+				self.$dialog.remove();
+			},this._timer);
+			// return 
+			return this;
+		}
+	});
+	
+	var Slider = Root.inherit({
+		thumb : null,
+		pager : null,
+		min : 0,
+		max : 100,
+		val : 0,
+		startX : 0,
+		_construct : function() {
+			// our thumb
+			//this.thumb = $(this.pager.el).find(".sliderThumb");
+			// mouse down start
+			$(this.pager.el)._on("mousedown", ".sliderThumb",this.start, this);
+		},
+		// since the pager is reconstructed each time, we need to update the DOM elements for slider
+		update : function() {
+			this.thumb = $(this.pager.el).find(".sliderThumb");
+			this.setVal(this.pager.currentPage);
+			this.max = this.pager.totalPages;
+		},
+		start : function(e,el) {
+			this.startX = e.clientX;
+			// mouse move to slide
+    		$(this.pager.el)._on("mousemove.slider",this.slide,this);
+    		$(document)._on("mouseup.slider",this.stop,this);	
+		},
+		stop : function() {
+			// remove the mousemove
+			$(this.pager.el).off("mousemove.slider");
+			// remove the mousup
+			$(document).off("mouseup.slider");
+			// go to page when stopped
+			this.pager.goto(this.val);
+		},
+		setVal : function(val) {
+			var $thumb = $(this.thumb),
+				$track = $thumb.prev(),
+				trackLength = $track.width() - $thumb.width();
+			
+			// intify val
+			this.val = parseInt(val);
+			// calculate pos
+			
+			var pos = (this.val * trackLength) / this.max;
+			// set the thumb
+			$thumb.css("margin-left",pos);
+		},
+		slide : function (e,el) {
+			var self = this;
+			if(~["slider","sliderThumb","sliderSpan","sliderTrack"].indexOf(e.target.className)) {
+	
+    			// current left and new left
+    			var $thumb = $(self.thumb),
+    				mleft = parseFloat($thumb.css("margin-left")),
+    				end = $thumb.prev().width() - $thumb.width();
+    				pos = mleft + (e.clientX - this.startX);
+				
+				// protect upper edge
+				if(pos >= end) {
+					pos = end;
+					self.val = this.max
+				
+				// protect the lower edge
+				} else if(pos <= 0) {
+					pos = 1;
+					self.val = this.min;
+				
+				// all other cases
+				} else {
+					self.val = ~~((pos / end) * self.max);
+				}
+								
+				// set the thumb
+				$(self.thumb).css("margin-left",pos);
+    			
+    			// reset start x
+    			this.startX = e.clientX;
+    			
+    			// input the val
+    			$(this.pager.el).find(".currentPage input").val( self.val );
+			}
 		}
 	})
 	
-	// only allow context clicking
-	// this prevents selection
-	$(".gridHeaderRow th").live("mousedown",function(e) {
-		if(e.which != 3) return false;
-	});
-	
-	// right click on headers
-	$(".gridHeaderRow th").live("contextmenu",function(e) {
-		var $th = $(this);
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		if( $(".gridContext").length > 0) $(".gridContext").remove();
+	// the pager object
+	var Pager = Root.inherit({
+		el : null,
+		grid : null,
+		currentPage : 1,
+		totalPages : 1,
+		slider : null,
+		query : "",
+		_construct : function() {
+			
+			// call initial
+			this.update();
+			
+		},
 		
-		// see if this is a checkbox field
-		var checkboxDisplay = $grid.data().columnOpts[$(this).attr("col")].editable == "checkbox" ? "block" : "none";
-		
-		var foundLetter=false, sum=null, avg=null, max=null, min=null, count=null;
-		$(this).getTdsFromTh().each(function(i) {
-			var val = $(this).find("input").length ? $(this).find("input").val() : $(this).text();
-			// only allow all numbers/decimals
-			if(val.search(/^[\d.\$Û£´£]*$/) == -1) foundLetter = true;
-			// parseFloat for calculations
-			var floatVal = parseFloat(val.replace(/[\$Û£´]/,''));
-			sum += floatVal;
-			if(!min) min = floatVal;	// assures that null isn't the smallest
-			max = floatVal > max ? floatVal : max;
-			min = floatVal < min ? floatVal : min;
-			count = i;
-		});
-		
-		sum = Math.round(sum*100)/100;
-		avg = Math.round((max/count)*100)/100;
-		var disp = foundLetter ? "none" : "block";
-		if($grid.data().columnOpts[$th.attr("col")].currency) {
-			var c = $grid.data().columnOpts[$th.attr("col")].currency;
-			sum = formatMoney(sum,c);
-			min = formatMoney(min,c);
-			max = formatMoney(max,c);
-			avg = formatMoney(avg,c);
-		}
-	
-		var $context = $("\
-			<div class='gridContext'>\
-				<div class='closeContext'>x</div>\
-				<div class='makeFluid'>Make Fluid</div>\
-				<div class='colHide'>Remove</div>\
-				<div class='colHighlite'>Highlite</div>\
-				<div class='colDeHighlight'>Un-Highlite</div>\
-				<hr style='display:"+disp+"'>\
-				<div style='display:"+disp+"'>Sum: <span class='showSum'>"+sum+"</span></div>\
-				<div style='display:"+disp+"'>Avg: <span class='showAvg'>"+avg+"</span></div>\
-				<div style='display:"+disp+"'>Max: <span class='showMax'>"+max+"</span></div>\
-				<div style='display:"+disp+"'>Min: <span class='showMin'>"+min+"</span></div>\
-				<hr style='display:"+checkboxDisplay+"'>\
-				<div style='display:"+checkboxDisplay+"' class='checkAll'>Check All</div>\
-				<div style='display:"+checkboxDisplay+"' class='uncheckAll'>UnCheck All</div>\
-			</div>\
-		").css({
-			left:e.clientX + 200 > $(window).width() ? e.clientX - 200 : e.clientX,
-			top:e.clientY
-		});
-		// keep track of which th this was
-		$context.attr("index",$(this).prevAll().length);
-		// add the menu
-		$(this).parents(".gridContainer").append($context);
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		$(".closeContext").click(function() {
-			$grid.equalizeColumns();
-		});
-		return false;
-	});
-	
-	$(".checkAll").live("click",function() {
-		var index = $(this).parent().attr("index");
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		var $th = $grid.getHeaderRow().find("th").eq(index);
-		$th.getTdsFromTh().each(function() {
-			$(this).find(":checkbox").attr("checked",true);
-			// mark to be saved
-			$(this).parents("tr").addClass("toBeSaved");
-		});
-		$grid.equalizeColumns();
-	});
-	
-	$(".uncheckAll").live("click",function() {
-		var index = $(this).parent().attr("index");
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		var $th = $grid.getHeaderRow().find("th").eq(index);
-		$th.getTdsFromTh().each(function() {
-			$(this).find(":checkbox").attr("checked",false);
-			// mark to be saved
-			$(this).parents("tr").addClass("toBeSaved");
-		});
-		$grid.equalizeColumns();
-	});
-	
-	// context option: will make the column fluid again
-	$(".makeFluid").live("click",function() {
-		var index = $(this).parent().attr("index");
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		var $th = $grid.getHeaderRow().find("th").eq(index);
-		var $td = $grid.find("tr:first td").eq(index);
-		$th.removeAttr("width");
-		$td.width("auto");
-		$grid.equalizeColumns();
-	});
-	
-	// hides a column
-	$(".colHide").live("click",function() {
-		var index = $(this).parent().attr("index");
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		var $th = $grid.getHeaderRow().find("th").eq(index);
-		$th.getTdsFromTh().each(function() {
-			$(this).remove();
-		});
-		$th.remove();
-		$grid.equalizeColumns();
-	});
-	
-	// highlites an entire column
-	$(".colHighlite").live("click",function() {
-		var index = $(this).parent().attr("index");
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		var $th = $grid.getHeaderRow().find("th").eq(index);
-		$th.getTdsFromTh().each(function() {
-			$(this).addClass("hilite");
-		});
-		$grid.equalizeColumns();
-	});
-	
-	// unhighlits a column
-	$(".colDeHighlight").live("click",function() {
-		var index = $(this).parent().attr("index");
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		var $th = $grid.getHeaderRow().find("th").eq(index);
-		$th.getTdsFromTh().each(function() {
-			$(this).removeClass("hilite");
-		});
-		$grid.equalizeColumns();
-	});
-	
-	// clicking the title will remove the context menu
-	$(".gridTitle").live("click",function() {
-		if( $(".gridContext").length > 0) $(".gridContext").remove();
-	});
-	
-	// double clicking on a row sticks it to the top
-	$(".grid tr").live("dblclick",function() {
-		var $grid = $(this).parents(".grid");
-		if($grid.data().stickyRows) {
-			$(this).addClass("stuckRow");
-			$grid.getHeaderRow().append($(this));
-			$grid.equalizeColumns();
-		}	
-	});
-	
-	// double click them to remove frozen rows
-	$(".gridHeaderRow tr").live("dblclick",function() {
-		// don't do dbl click on first row
-		// :note(:first) didn't work *shrugs
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		var index = $(this).prevAll().length;
-		if(index) {
-			$(this).remove();
-			$grid.loadGrid();
-		}
-	});
-	
-	// page forward
-	$(".gridNext").live("click",function() {
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		// don't do it if the grid isn't done loading
-		if(!$grid.data().gridLoading) {
-			var lastRowShowing = parseInt($grid.data().lastRowShowing);
-			var nRowsShowing = parseInt($grid.data().nRowsShowing);
-			var totalRows = parseInt($grid.data().totalRows);
-			if( lastRowShowing < totalRows) {
-				$grid.loadGrid({
-					page: parseInt($grid.data().page) + 1
-				});
-			}
-		}	
-	});
-	
-	// page backward
-	$(".gridBack").live("click",function() {
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		// don't do it if the grid isn't done loading or your on page 1
-		if(!$grid.data().gridLoading && $grid.data().page > 1) {
-			$grid.loadGrid({
-				page: parseInt($grid.data().page) - 1
+		update : function() {
+			var self = this,
+				grid = this.grid,
+				$grid = $(grid.el),
+				nRows = grid.totalRows,
+				showing = grid.opts.nRowsShowing,
+				nPages = ~~(nRows / showing),
+				page = parseInt(grid.opts.page),
+				$pager = null;
+			
+			// store some vars
+			this.currentPage = page;
+			this.totalPages = nPages;
+			
+			// setup
+			// for now, we do have to render the pager, just not show it
+			var pagerHtml = grid._render("pager")({
+				start : grid.start,
+				end : grid.end,
+				nRows : nRows,
+				nPages : nPages,
+				page : page,
+				nextPage : page + 1,
+				secondToLastPage : nPages - 1,
+				lastPage : nPages,
+				search : this.query
 			});
-		}
-	});
-	
-	// grid refresh
-	$(".gridRefresh").live("click",function() {
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		$grid.loadGrid();
-	});
-	
-	/*! kill selections */
-	$(".gridWrapper").live("mousedown",function(e) {
-		var $grid = $(this).find(".grid");
-		if(!$grid.data().inlineEditing) {
-			return false;
-		}
-	});
-	
-	// disable more selections
-	$(".gridButton, .gridHandle").live("mousedown",function(e) {
-		return false;
-	});
-	
-	$(window).resize(function() {
-		//$(".grid").equalizeColumns();
-	});
-	
-	$.fn.exportAsJson = function() {
-		var $grid = $(this);
-		return $grid.data().rowData;
-	}
-	
-	// hide hidden cols
-	$.fn.hideHiddenCols = function() {
-		var $grid = $(this);
-		$.each($grid.data().columnOpts, function(i,opts) {
-			if(opts.display && opts.display == "hidden") {
-				$grid.hideCol(opts.col);
+
+			// make it the first time
+			if(!this.el) {
+				// create the element
+				$pager = $("<div class='gridPager fc'>"+pagerHtml+"</div>");
+				$grid.append($pager);
+				
+				// set the element
+				this.el = $pager[0];
+				
+				// setup slider
+				var nRows = this.grid.totalRows,
+					showing = this.grid.opts.nRowsShowing,
+					nPages = ~~(nRows / showing);
+					
+				this.slider = Slider.inherit({
+					pager : this,
+					thumb : $(this.el).find(".sliderThumb"),
+					min : 1,
+					max : nPages
+				});
+				
+				// page events
+				$pager._on('click','.gridNext:not(.disabled)', self.next, self);
+				$pager._on('click','.gridPrev:not(.disabled)', self.prev, self);
+				$pager._on('keyup','.currentPage input', self.pageEnter, self);
+				$pager.on('click','.goto', function(e) {
+					e.preventDefault();
+					var page = $(this).attr("href").substr(1);
+					self.goto.call(self,page);
+				});
+				
+				// handle search icon thing
+				$pager.on('blur','.search :input', function() {
+					if($(this).val()) $(this).parent().removeClass("icon");
+				})
+				$pager.on('focus','.search :input', function() {
+					$(this).parent().addClass("icon");
+				});
+				$pager.on('click','.search', function() {
+					$(this).find(":input").focus();
+				});
+				// search back to the db
+				$pager._on('keyup','.search :input',self.search, self);
+				
+				// live typing action is on grid not pager
+				$pager._on('keyup','.search :input',self.grid._filter,self.grid);
+				
+			} else {
+				// common var
+				$pager = $(this.el);
+				
+				// replace our templated HTML
+				$pager.html(pagerHtml);
+				
+				// check the search icon, if there is text we need it not be there
+				if(this.query) {
+					$pager.find(".search.icon").removeClass("icon");
+				}
 			}
-		});
-	}
-	
-	// called on a grid - will hide the given col
-	$.fn.hideCol = function(col) {
-		var $grid = $(this);
-		var $th = $grid.getHeaderRow().find("th[col="+col+"]");
-		$th.hide();
-		$th.getTdsFromTh().hide();
-	}
-	
-	// sets up cells for inline editing
-	$.fn.setupInlineEditing = function() {
-		var $grid = $(this);
-		
-		// move the save button to the title if the pager doesn't exist
-		if(!$grid.data().pager) {
-			$grid.data("saveLocation","title");
-		}
-		
-		// save button location
-		// create the button text
-		var saveBtnText = "<div class='gridButton gridSave'><div>Save</div></div>"; 
-		// remvoe all of them
-		$grid.parents(".gridContainer").find(".gridSave").remove();
-		// place it
-		switch($grid.data().saveLocation) {
-			case "title":
-				$grid.parents(".gridContainer").find(".gridTitle").append(saveBtnText);
-				break;
-			case "both":
-				$grid.getPager().append(saveBtnText);
-				$grid.parents(".gridContainer").find(".gridTitle").append(saveBtnText);
-				break;
-			default:
-				$grid.getPager().append(saveBtnText);
-				break;	
-		}
-		
-		// we need the save button for this
-		var $saveBtn = $grid.parents(".gridContainer").find(".gridSave");
-		
-		// don't add the listener if the save button is already there
-		if($saveBtn.css("display") == "none") {
-			$saveBtn.fadeIn().click(function() {
-				// spit out object of all stuff to save
-				var rows = new Array();
-				$grid.find("tr.toBeSaved").each(function() {
-					// each cell to save
-					var nvpArray = new Array();	// use this array so we can join by comma later
-					$(this).find(".editableInput").each(function() {
-						var col = $(this).parent().attr("col");
-						// to get value of checkbox we have to check the dom property 'checked'
-						if($(this)[0].type == "checkbox") {
-							var val = $(this)[0].checked ? 1 : 0;
-						// all other values can use .val()
-						} else {
-							var val = $(this).val();
-						}
-
-						val = val.toString().replace(/"/g,'\\"');
-						val = val.toString().replace(/\r|\n/g,'\\n');
-						nvpArray.push('"'+col+'":"'+val+'"');
-					});
-					var rowId = $(this).attr("primary_key");
-					var internalPart = "{"+nvpArray.join(",")+"}";
-					rows.push('"'+rowId+'":'+internalPart);
-				});
-				
-				// wrap all rows joined by comma in an object
-				var jsonPost = "{"+rows.join(",")+"}";
-
-				// dont do it if its empty
-				if(jsonPost != "{}") {
-					// send this string to php
-					
-					console.log(jsonPost);
-					
-					// passing it the save flag so we can catch it in our ajax file
-					if($.blockUI) $grid.block({ message: $grid.data().loadingMessage });
-					$.post($grid.attr("action"),{"save":1,"json":jsonPost},function(error) {
-						// no return means no errors!
-						if(!error) {
-							// blink and change the save text
-							$saveBtn.html("Saved!").fadeOut("fast",function() {
-								$saveBtn.fadeIn("fast",function() {
-									$saveBtn.html("Save");
-									// method on save success
-									if($grid.data().saveSuccess) $grid.saveSuccess();
-								});
-							});
-							$grid.loadGrid();
-						} else {
-							// tell you to stop and re do it, you have a sql error
-							$saveBtn.text("ERROR! refresh");
-							alert(error);
-							// method on save success
-							if($grid.data().saveFail) $grid.saveFail();
-						}
-					});
-				}	
-			});
-		}
-		
-		// go through options and find editable columns
-		$grid.getHeaderRow().find("th").each(function() {
-			var $th = $(this);
-			var col = $th.attr("col");
-
-			if( $grid.data().columnOpts[col] && $grid.data().columnOpts[col].editable) {
-				var editType = $grid.data().columnOpts[col].editable;
-				// text box
-				if(editType == "text" || editType == "inline" || editType == "date" || editType == "textarea") {
-					$th.getTdsFromTh().each(function() {
-						var $td = $(this);
-						// dont setup a cell that is already editable
-						if(!$td.hasClass("editableCell")) {
-							$td.addClass("editableCell");
-							var width = width ? 0 : $td.width();	// quick way of saying, use the first width
-							// check if maxlength is to be used
-							var maxlength = "";
-							if($grid.data().columnOpts[col].maxLength) {
-								maxlength = "maxlength='"+$grid.data().columnOpts[col].maxLength+"'";
-							}
-							if($td.text() == "null") $td.text("");
-							var xtraClass = editType=="date" ? "datepicker" : "";
-							// handle textarea
-							if(editType == "textarea") {
-								var $input = $('<textarea '+maxlength+' class="editableInput '+xtraClass+'"></textarea>');
-							} else {
-								var $input = $('<input '+maxlength+' class="editableInput '+xtraClass+'" type="text" />');
-							}	
-							$input.val($td.text());
-							// add a class to identify which rows were edited
-							$input.focus(function() {
-								$(this).parents("tr").addClass("toBeSaved");
-							});
-							// replace the html with the new input box
-							$td.html($input);
-							// make sure its the same width as before
-							$td.width(width);
-						}	
-					});
-
-				// passthru
-				} else if (editType == "passthru") {
-					$th.getTdsFromTh().each(function() {
-						var $td = $(this);
-						// dont setup a cell that is already editable
-						if(!$td.hasClass("editableCell")) {
-							$td.addClass("editableCell");
-							if($td.text() == "null") $td.text("");
-							var $input = $("<input type='hidden' class='editableInput' value='"+$td.text()+"'/>");
-							$input.focus(function() {
-								$(this).parents("tr").addClass("toBeSaved");
-							});
-							// append the hidden data
-							$td.append($input);
-						}	
-					});
-				// select box
-				} else if (editType == "select") {
-					// get select data
-					$.post($grid.attr("action"),{"select":1,col:col},function(options) {
-						// loop through cells
-						$th.getTdsFromTh().each(function() {
-							var $td = $(this);
-							// create the select box
-							var $select = $("<select class='editableInput'></select>");
-							//  insert null select if there is no value
-							if(nullText = $grid.data().columnOpts[col].nulltext) {
-								$select.append("<option value=''>"+nullText+"</option>");
-							}	
-							// insert the rest of the options
-							$.each(options,function(val,disp) {
-								if($td.text() == val) {
-									$select.append("<option selected value='"+val+"'>"+disp+"</option>");
-								} else {
-									$select.append("<option value='"+val+"'>"+disp+"</option>");
-								}
-							});
-							// focusing will tell use this has been edited
-							$select.focus(function() {
-								$(this).parents("tr").addClass("toBeSaved");
-							});
-							$(this).addClass("editableCell").html($select);
-						});
-						$grid.equalizeColumns();
-					},"json");
-				} else if (editType == "checkbox") {
-					// for every td
-					$th.getTdsFromTh().each(function() {
-						$(this).addClass("editableCell");
-						// if there is a value, check that guy
-						var v = parseInt($(this).text());
-						if(v) {
-							var $cb = $("<input class='editableInput' type='checkbox' checked value='"+v+"'/>");
-						} else {
-							var $cb = $("<input class='editableInput' type='checkbox' value='"+v+"'/>");
-						}
-						// clicking will tell use this has been edited
-						$cb.click(function() {
-							$(this).parents("tr").addClass("toBeSaved");
-						});
-						$(this).html($cb);
-					});
-				}
-			}	
-		});
-	}
-
-	
-	// creates row count after rows exist
-	$.fn.createRowCount = function() {
-		var $grid = $(this);
-		// mimic the header stucture
-		$grid.getHeaderRow().find("tr:first").prepend("\
-			<th style='width:20px' col='#'>\
-				<div class='colResizer' style='width:20px'>#\
-					<div class='colHandle'></div>\
-				</div>\
-			</th>\
-		");
-		// count some rows and add them in
-		$grid.find("tr").each(function(i) {
-			var rowNum = i + parseInt($grid.data().firstRowShowing);
-			$(this).prepend("<td col='#'>"+rowNum+"</td>");
-		});
-		$grid.equalizeColumns();
-	}
-	
-	// creates delet Column
-	$.fn.createDeleteColumn = function() {
-		var $grid = $(this);
-		// mimic the header stucture
-		$grid.getHeaderRow().find("tr:first").append("\
-			<th col='X' style='width:20px'>\
-				<div class='colResizer' style='width:20px'>X\
-					<div class='colHandle'></div>\
-				</div>\
-			</th>\
-		");
-		// count some rows and add them in
-		$grid.find("tr").each(function(i) {
-			var $tr = $(this);
-			$del = $("<div class='gridButton gridDelete'><div>Delete</div></div>");
-			$del.click(function() {
-				// if we need to confirm the delete
-				if($grid.data().deleteConfirm) {
-					// row index so we can get this data
-					var rowIndex = $tr.prevAll().length;
-					// the value is gonna be in the rowData object
-					// if its not set - use blank
-					var whatToSay = $grid.data().rowData[$grid.data().deleteConfirm] ? $grid.data().rowData[$grid.data().deleteConfirm][rowIndex].value : "";
-					if(confirm("Are you sure you want to delete "+whatToSay+" ?")) {
-						$.post($grid.attr("action"),{
-							"delete":true,
-							"primary_key":$(this).parents("tr").attr("primary_key")
-						}, function(success) {
-							if(success) {
-								$grid.loadGrid();
-								// method on delete success
-								if($grid.data().deleteSuccess) $grid.deleteSuccess();
-							} else {
-								// method on delete fail
-								if($grid.data().deleteFail) $grid.deleteFail();
-								alert("Error: Delete Failed");
-							}
-						});
-					}	
-				} else {
-					$.post($grid.attr("action"),{
-						"delete":true,
-						"primary_key":$(this).parents("tr").attr("primary_key")
-					}, function() {
-						$grid.loadGrid();
-					});
-				}
-				
-			});	
-			$(this).append($("<td col='X' style='width:20px'></td>").append($del));
-		});
-		$grid.equalizeColumns();
-	}
-	
-	
-	// called on grid, given a col attr it will return that TH
-	$.fn.getCol = function(col) {
-		return $(this).getHeaderRow().find("th[col="+col+"]");
-	}
-	
-	// called on a TH it will return all of the TDs in that column
-	$.fn.getTdsFromTh = function() {
-		var $grid = $(this).parents(".gridContainer").find(".grid");
-		return $grid.find("td[col="+$(this).attr("col")+"]");
-	};
-	
-	// equalizes the header rows with the first row
-	$.fn.equalizeColumns = function() {
-		var $grid = $(this);
-		
-		
-		return this.each(function() {
 			
-			// remove the context menu if it exists
-			if( $(".gridContext").length > 0) $(".gridContext").remove();
+			// start fresh
+			$pager.find(".gridPrev, .gridNext").removeClass("disabled");
 			
-			// cache it
-			var $header = $grid.getHeaderRow();
+			// if the previous page is gonna be 1, disabled the button
+			if(this.currentPage - 1 <= 0) {
+				$pager.find(".gridPrev").addClass("disabled");
+			}
 			
-			// if there is a scrollbar account for it
-			if(($grid.height() > $grid.parents(".gridWrapper").height())) {
-				$header.find(".scrollTh").remove();
-				var $newTh = $("<th></th>").addClass("scrollTh").css({
-					padding:0,
-					margin:0,
-					width:15
-				});
-				$header.find("tr:first").append($newTh);
-			} else if ($grid.parents(".gridWrapper").height() > $grid.height()) {
-				$(".scrollTh").remove();
-			}	
+			// if the previous page is gonna be 1, disabled the button
+			if(this.currentPage + 1 > nPages) {
+				$pager.find(".gridNext").addClass("disabled");
+			}
 			
-			// size the first row to the headers
-			$grid.find("tr:first td:visible").each(function(i) {
-				var $colResizer = $header.find(".colResizer").eq(i);
-				var pLeft = parseInt($colResizer.parents("th").css("padding-left"));
-				var pRight = parseInt($colResizer.parents("th").css("padding-left"));
-				
-				$colResizer.width($(this).width());
-			})
+			// update slider
+			var self = this;
+			this.slider.update();
 			
-		});	
-	}
-	
-	/* function is too slow ff 3.6
-	// figures out if a column is empty or not given a th
-	$.fn.isEmptyColumn = function() {
-		return false;
-		$str = "";
-		$(this).getTdsFromTh().each(function() {
-			var editVal = $(this).find("input").length ? $(this).find("input").val() : "";
-			$str += $(this).text() + editVal;
-		});
-		if($str) return false;
-		else return true;
-	};
-	*/
-	
-	// method to move the header
-	$.fn.moveHeaderRow = function() {
-		var $grid = $(this);
-		if(!$grid.getHeaderRow().length) {
-			$firstTr = $grid.find("tr:first").clone();
-			$grid.parents(".gridContainer").prepend($("<table class='gridHeaderRow'>").append($firstTr));
+			// do we need the pager part of the pager
+			if(!grid.opts.editing) {
+				$grid.find(".gridSave").hide();
+			}
 			
-			$firstTr.find("th").each(function(i,item) {
-				var $th = $(this);
-				var text = $th.text();
-				$th.html("");
-				
-				// create inner th elements
-				var lastTh = $grid.getHeaderRow().find("th").length -1;
-				
-				var $colHandle = $("<div class='colHandle'></div>");
-					$colHandle.height($th.outerHeight());
-				var $colResizer = $("<div class='colResizer'></div>").html(text).append($colHandle);
-				
-				// if resizalbe columns is set
-				if($grid.data().resizableColumns) {
-					// add drag (mousedown and mousemove) listeners
-					$colHandle.mousedown(function(e) {
+			// do we need the pager part of the pager
+			if(!grid.opts.showPager) {
+				$pager.find("div.pagination.left").hide();
+			}
 						
-						var startX = e.clientX;
-						$(document).bind("mousemove.grid",function(e) {
-							// get the inner div
-							var $div = $th.find("div.colResizer");
-							// calculate the width based on mouse position
-							var width = $div.width() + (e.clientX - startX);
-							// we need to resize the TD as well - so using the index, grab it
-							var currentIndex = $th.prevAll().length;
-							// set the width of the div
-							$div.width(width);
-							// set the width of the td
-							$grid.find("tr:first td").eq(currentIndex).width(width);
-							// reset our start var
-							startX = e.clientX;
-							// equalize all the others
-							$grid.equalizeColumns();
-							// store this guys width
-							$th.attr("width",width);
-						});
-						$(document).mouseup(function() {
-							$(document).unbind("mousemove.grid");
-						});
-					});
-				}
-
-				// now set the th to auto
-				$th.width("auto");
-				
-				// add the resizer
-				$th.append($colResizer);
-				
-				// fix some sizing
-				var ptop = -1 * parseInt($th.css("padding-top"));
-				$colHandle.css({
-					"top":ptop,
-					"right":-1 * $colHandle.outerWidth() / 1.9
-				});
-								
-			});
-			
-			$grid.getHeaderRow().find(".colhandle:last").remove();
-			
-		}	
-		return $grid.getHeaderRow();
-	}
-	
-	
-	// method to create the pager if it doesn't exist
-	$.fn.createPager = function() {
-		var $grid = $(this);
-		var $pager = $grid.getPager();
-		// only do it if the nResults is > than nRows
+		},
 		
-		if(!$pager.length) {
+		search : function(e,el) {
+			if(e.keyCode == 13) {
+				// search grid
+				this.grid.load({ 	
+					search : $(el).val(),
+					page : 1
+				});
+				// remove the glass
+				$(el).parent().removeClass("icon");
+				// false
+				return false;
+			}
+		},
 		
-			// if we want a date range
-			var dateRange = "";
-			if($grid.data().dateRange) {
-				dateRange = "\
-					<div class='dateRange'>\
-						<input type='text' class='dateRangeFrom datepicker' value='"+$grid.data().dateRangeFrom+"'/> -\
-						<input type='text' class='dateRangeTo datepicker' value='"+$grid.data().dateRangeTo+"'/>\
-					</div>\
-					<div class='gridButton dateGo'><div>Go</div></div>\
-				";
+		// hitting enter to go to a page
+		pageEnter : function(e, el) {
+			e.preventDefault();
+			if(e.keyCode === 13) {
+				this.goto( $(el).val() )
 			}
-			
-			var refreshButton = "";
-			if($grid.data().refreshButton) {
-				refreshButton = "<div class='gridButton gridRefresh'><div>Refresh</div></div>";
-			}
-			
-			// add paging div
-			$pager = $("\
-				<div class='gridPager'>\
-					"+refreshButton+"\
-					<div class='gridSearch'>\
-						<input type='text' placeholder='search' value=''/>\
-					</div>\
-					<div class='gridLimit'>\
-						<input type='text' value='"+$grid.data().nRowsShowing+"' style='width:20px' class='nRowsShowing'/>\
-					</div>\
-					<div class='gridButton gridBack'><div>Back</div></div>\
-					<div class='gridButton gridNext'><div>Next</div></div>\
-					<div class='gridTotal'></div>\
-					"+dateRange+"\
-					<div class='gridButton gridSave'><div>Save</div></div>\
-				</div>\
-			");
-			
-			// add the pager
-			switch($grid.data().pagerLocation) {
-				case "bottom":
-					$grid.parents(".gridContainer").append($pager);
-					break;
-				case "top":
-					$grid.parents(".gridContainer").prepend($pager.addClass("pagerTop"));
-					break;
-				case "both":
-					$grid.parents(".gridContainer").prepend($pager.clone());
-					$grid.parents(".gridContainer").append($pager);
-					break;
-				default:
-					break;
-			}
-			
-			// add events for datepicker if needed
-			if($grid.data().dateRange) {
-				$(".dateGo").click(function() {
-					$grid.loadGrid({
-						dateRangeFrom:$(this).parents(".gridContainer").find(".dateRangeFrom").val(),
-						dateRangeTo:$(this).parents(".gridContainer").find(".dateRangeTo").val()
-					});
-				});
-				// make sure all copies have the same data
-				$(".dateRangeFrom").change(function() {
-					$(this).parents(".gridContainer").find(".dateRangeFrom").val($(this).val());
-				});
-				$(".dateRangeTo").change(function() {
-					$(this).parents(".gridContainer").find(".dateRangeTo").val($(this).val());
-				});
-			}
-			
+		},	
+		
+		// pager go next
+		next : function(e) {
+			// because we want to chain, we prevenDefault instead of return false;
+			e.preventDefault();
+			// load the grid with one page forward
+			this.grid.load({ page : ++this.currentPage });
+			// chain
+			return this;
+		},
+		
+		// pager go prev
+		prev : function(e) {
+			// because we want to chain, we prevenDefault instead of return false;
+			e.preventDefault();
+			// load the grid one page back
+			this.grid.load({ page : --this.currentPage });
+			// chain
+			return this;
+		},
+		
+		// pager go
+		goto : function(page) {
+			this.grid.load({ page : page });
+			// set the sider
+			this.slider.setVal(page);
+			// chain
+			return this;
 		}
-		return $grid.getPager();
-	}
+	});
 	
-	// quick helper function to get the header row from the grid
-	$.fn.getHeaderRow = function() {
-		return $(this).parent().prev(".gridHeaderRow");
-	}
-	
-	// quick helper function to get the pager from the grid
-	$.fn.getPager = function() {
-		return $(this).parents(".gridContainer").find(".gridPager");
-	}
-	
-	// will make the grid resizble
-	$.fn.makeResizable = function() {
-		var $grid = $(this);
-		var $container = $grid.parents(".gridContainer");
-		var $wrapper = $grid.parents(".gridWrapper");
-		var $handle = $("<div class='gridHandle'></div>");
-		$handle.mousedown(function(e) {
-			// as soon as the mouse goes down - record our x and y
-			var startX = e.clientX;		
-			var startY = e.clientY;
-			// bind with  namespace so we can remove only ours
-			$(document).bind("mousemove.resize",function(e) {
-				// resize container and wrapper based on x and y distance change
-				$container.width($container.width() + (e.clientX - startX));
-				$wrapper.height($wrapper.height() + (e.clientY - startY));
-				$wrapper.css("max-height",$wrapper.css("max-height") + (e.clientY - startY));
-				// reset so we dont' get exponential distances
-				startX = e.clientX;
-				startY = e.clientY;
-				// equalize each time
-				$grid.equalizeColumns();
-			});
-			// when your done, remove our move listener
-			$(document).mouseup(function() {
-				$(document).unbind("mousemove.resize");
-			});
-		});
-		// add the handle to the dom$grid.parents(".gridContainer").width("100%");
-		$grid.parents(".gridContainer").append($handle);
-	}
-	
-	
-	// will get all the matched elements and join them with a comma by the attribute
-	// UTILITY
-	$.fn.attrJoin = function(attr) {
-		return $(this).map(function() { 
-			return $(this).attr(attr); 
-		}).get().join(",");
-	}
-	
-});
-
-
-// format money
-function formatMoney(amount,symbol) {
-	var i = parseFloat(amount);
-	if(isNaN(i)) { i = 0.00; }
-	var minus = '';
-	if(i < 0) { minus = '-'; }
-	i = Math.abs(i);
-	i = parseInt((i + .005) * 100);
-	i = i / 100;
-	s = new String(i);
-	if(s.indexOf('.') < 0) { s += '.00'; }
-	if(s.indexOf('.') == (s.length - 2)) { s += '0'; }
-	s = minus + s;
-	return symbol+addCommas(s);
-}
-
-function addCommas(amount) {
-	var delimiter = ","; // replace comma if desired
-	var a = amount.split('.',2)
-	var d = a[1];
-	var i = parseInt(a[0]);
-	if(isNaN(i)) { return ''; }
-	var minus = '';
-	if(i < 0) { minus = '-'; }
-	i = Math.abs(i);
-	var n = new String(i);
-	var a = [];
-	while(n.length > 3)
-	{
-		var nn = n.substr(n.length-3);
-		a.unshift(nn);
-		n = n.substr(0,n.length-3);
-	}
-	if(n.length > 0) { a.unshift(n); }
-	n = a.join(delimiter);
-	if(d.length < 1) { amount = n; }
-	else { amount = n + '.' + d; }
-	amount = minus + amount;
-	return amount;
-}
+})(jQuery);

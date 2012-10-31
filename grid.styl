@@ -1,0 +1,296 @@
+@import 'lib/nib'
+
+body
+	padding:80px
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif
+	font-size: 13px
+	line-height: 18px
+	color: #333
+
+.left {float:left}
+.right {float:right}
+.fc {overflow:hidden}
+
+div.gridWrapper
+	width:800px
+	min-width:515px
+	border: 1px solid #DDD
+	border-radius: 4px
+	border-radius: 4px
+	height:280px
+	position:relative
+	background:white;
+	margin-bottom:70px;
+	
+	&.resizing, &.resizing input
+		user-select: none
+		//overflow:hidden;
+	&.moving
+		user-select: none
+	
+	.dialog
+		position absolute
+		top: 50px
+		left: 50%
+		padding:20px
+		border-radius: 7px
+		color:#333
+		font-size:11px
+		width:200px
+		height:80px
+		margin-left:-100px
+		background:white
+		//border: 1px solid rgba(0,0,0,.2)
+		box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.4);
+		opacity 0
+		transition opacity 200ms ease-out
+		
+		&.show
+			opacity 1
+		
+		span.body
+			display:block
+			margin-bottom:5px
+		
+		span.label
+			top: -10px;
+			position: relative;
+			padding-top: 2px;
+		
+		.buttons
+			bottom: 12px;
+			position: absolute;
+			right: 15px;
+			
+			button
+				outline:none
+	
+		&.gridNotify
+			width: 100px;
+			height: 30px;
+			text-align: center;
+			margin-left: -50px;
+	
+	.gridLoading
+		text-align:center
+		display:block
+		width:100%
+		font-size:11px
+		height:100%
+
+	.gridResizer
+		position:absolute
+		right:0px
+		top:0px
+		bottom:0px
+		width:10px
+		cursor:e-resize
+
+	.columns
+		height:inherit
+		overflow-x:hidden
+		opacity 1
+	
+		&.blur
+			//-webkit-filter: blur(20px);
+			opacity .2
+			
+		
+		.cell
+			padding:5px
+			border-left:1px solid #DDD
+			white-space:nowrap
+			height:24px
+			position:relative;
+			overflow:hidden;
+			//background-color #e5e5e5
+			
+			&:nth-child(2), &.topMargin
+				margin-top:40px
+			
+			&:nth-child(2n+1)
+				//background-color #eee
+				
+			&.level2
+				height:160px;
+				overflow:visible;
+				
+				.level2Grid
+					background: blue;
+					height: 147px;
+					width: 793px;
+					z-index: 5;
+					position: absolute;
+			
+			img
+				max-width: 100%;
+				max-height: 100%;
+			
+			&.row-hover
+				background:rgba(0,0,0,.05)
+			
+			&.input
+				padding-right:15px
+			&.select
+				padding-right 5px
+
+			&.center
+				text-align:center
+	
+			&.editable input[type="text"]
+				width: 100%
+				box-shadow: inset 0px 1px 3px #ccc
+				border:0px
+				margin:0px
+			
+			&.blankCell
+				zoom:1;
+				//padding-bottom: 15px
+			
+			&.headerCell
+				position:absolute
+				width:inherit
+				height:inherit
+				overflow:hidden
+				border-bottom:1px solid #DDD
+				padding:0px
+				cursor:pointer
+				user-select : none
+				background: linear-gradient(top, #ffffff 0%,rgb(228,228,228) 100%)
+				z-index 2
+				
+				span 
+					font-weight:bold
+					padding:9px
+					display:block
+					
+				.sortbar
+					position:absolute
+					height:10px
+					width:100%
+					bottom:0px
+					left:0px
+					font-size:13px
+					line-height: 9px
+					text-align: center
+					display:none
+					transform: rotate(0deg)
+					
+					&.desc
+						transform: rotate(180deg)
+					
+				.resizer
+					position:absolute
+					top:0px
+					right:0px
+					height:100%
+					width:10px
+					background:transparent
+					cursor:move
+		
+		.col
+			float:left
+			//overflow:hidden
+			
+			&._checkbox .headerCell
+				text-align:center
+
+			&:first-child .cell
+				border-left:0px
+					
+				
+	&.small 
+		.cell.headerCell
+			text-align:center
+			
+			span
+				padding 4.5px // half of the original span padding
+		.gridPager 
+			.slider span
+				width:70px;
+			.search input:focus
+				width:120px;
+	
+	&.small, &.small input
+		font-size:10px
+	
+	.gridPager
+		margin-top:15px
+		user-select: none
+		.slider
+			
+			span
+				border: 1px solid #DDD;
+				float:left;
+				height:34px;
+				border-left:none;
+				width:150px;
+			.slider
+				width:88%
+				padding-left:6%;
+				padding-right:6%;
+			
+				.sliderTrack
+					width: auto
+					height: 4px
+					box-shadow: inset 0px 2px 5px #333
+					margin-top: 15px
+					background: #CCC
+					border-radius: 5px
+				.sliderThumb
+					width:13px
+					height:13px
+					border-radius:6px
+					margin-top: -7px;
+					box-shadow: 0px 0px 4px #333
+					background: linear-gradient(top, #ffffff 0%,#f1f1f1 50%,#e1e1e1 51%,#f6f6f6 100%)
+					cursor:pointer
+		.currentPage, .search
+			input
+				float: left;
+				height: 26px;
+				width: 30px;
+				margin-left: 2px;
+				text-align: center;
+		.pagination
+			margin:0
+			li a, li span
+				background:white;
+			&.left li
+				white-space:no-wrap
+			ul,ol
+				margin:0
+		.gridSave
+			padding: 8px 10px;
+		.pager_showing
+			min-width 108px
+			text-align center
+		.search 
+			position:relative;
+			input
+				transition:width, 200ms ease-out
+				text-align:left;
+			
+				&:focus
+					width:150px
+		.search.icon:after, .search input:focus:after
+				content : ''
+				width: 14px;
+				height:14px;
+				display:block;
+				position:absolute;
+				top 10px;
+				left -27px;
+				background-image: url('http://twitter.github.com/bootstrap/assets/img/glyphicons-halflings.png');
+				background-position: -48px 0px;
+	select
+		width 100%
+
+.ui-datepicker
+	z-index 2
+	
+// bootstrap button fix
+.btn:hover
+	transition: none
+
+

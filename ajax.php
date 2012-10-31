@@ -1,31 +1,36 @@
 <?php
 	// connect to db
 	mysql_connect("localhost","root","root");
-	mysql_select_db("cmi_test");
+	mysql_select_db("test");
 	
 	// require our class
 	require_once("grid.php");
-	// load our grid with a table
-	$grid = new Grid("orders");
 	
-	// for editing check for the save flag and call save
-	if(isset($_POST['save'])) {
-		//$grid->security = array("n_items");
-		echo $grid->save();
-	} else if(isset($_POST['add'])) {
-		$grid->add();
-	} else if(isset($_POST['delete'])) {
-		$grid->delete();
-	} else if(isset($_POST['select'])) {
-		// select for column txn_id
-		if($_POST['col'] == "txn_id") {
-			$grid->where = "txn_id IS NOT NULL";
-			$grid->limit = 5;
-			$grid->makeSelect("txn_id","txn_id");
-			echo json_encode($grid->data);
-		}	
-	} else {
-		$grid->load();
-		echo json_encode($grid->data);
-	}	
+	// load our grid with a table
+	$grid = new Grid("tutorials", array(
+		"save"=>true,
+		"delete"=>true,
+		"where"=>"ThumbnailLocation != ''",
+		"joins"=>array(
+			"LEFT JOIN categories ON categories.CategoryID = tutorials.CategoryID"
+		),
+		"fields"=>array(
+			"thumb" => "CONCAT('http://cmivfx.com/images/thumbs/',ThumbnailLocation)"
+		),
+		"select" => function($grid) {
+			$selects = array();
+		
+			// category select
+			$grid->table = "categories";
+			$selects["CategoryID"] = $grid->makeSelect("CategoryID","Name");
+			
+			// active select
+			$selects["active"] = array("1"=>"true","0"=>"false");
+			
+			// render data			
+			$grid->render($selects);
+		}
+	));
+
+	
 ?>
