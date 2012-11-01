@@ -1099,8 +1099,14 @@ var grids = [];
 				col = el.getAttribute("col"),
 				sort = $sortbar.show().toggleClass("desc").hasClass("desc") ? "desc" : "asc";
 			
-			// load the grid with new sorting
-			this.load({ sort : sort, orderBy : col });
+			// get possible columns to sort on
+			var sortable = this.cols.split(",");
+			// dont sort on columns that are dynamic
+			if($.inArray(col,sortable) != -1) {
+			
+				// load the grid with new sorting
+				this.load({ sort : sort, orderBy : col });
+			};
 		},
 		
 		// updates the row (should be called as you type)
