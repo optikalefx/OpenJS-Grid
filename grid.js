@@ -1447,6 +1447,11 @@ var grids = [];
 		
 		// pager go
 		goto : function(page) {
+			// don't allow a page to be higher than total pages
+			if(page > this.totalPages) page = this.totalPages;
+			// if page is <1 make it 1
+			if(page < 1) page = 1;
+			// do load
 			this.grid.load({ page : page });
 			// set the sider
 			this.slider.setVal(page);
