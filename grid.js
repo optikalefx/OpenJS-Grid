@@ -77,7 +77,6 @@ var grids = [];
 				}
 			},
 			"image": function(value, columnOpts, grid) {
-				console.log("image type",value,columnOpts,grid);
 				return {
 					cellClass: "center",
 					cellValue: "<img src='"+value+"'/>"
@@ -701,10 +700,15 @@ var grids = [];
 					// cache this outside the loop
 					var setupTypes = function() {
 						if(typeof self.cellTypes[colOpts.type] == "function") {
+							
 							typeOpts = self.cellTypes[colOpts.type](cellValue,colOpts,self);
 							
 							// protect a no return
 							if(typeof typeOpts == "undefined") typeOpts = {cellValue : cellValue,cellClass: ""};
+							
+							if(colOpts.type == "image") {
+								console.log("image",typeOpts);
+							}
 							
 							cellValue = typeOpts.cellValue;
 							cellClass = typeOpts.cellClass;
