@@ -658,6 +658,7 @@ var grids = [];
 			if(selectCols.length) {
 				selectPromise = $.post(this.opts.action,{select : true, cols : selectCols},function(data) {
 					self.selects = data;
+					return true;
 				});
 			}
 			
@@ -705,14 +706,11 @@ var grids = [];
 							
 							// protect a no return
 							if(typeof typeOpts == "undefined") typeOpts = {cellValue : cellValue,cellClass: ""};
-							
-							if(colOpts.type == "image") {
-								console.log("image",typeOpts);
-							}
-							
+
 							cellValue = typeOpts.cellValue;
 							cellClass = typeOpts.cellClass;
 						}
+						return true;
 					}
 					
 					for(key in data.rows) {
@@ -728,6 +726,7 @@ var grids = [];
 								// setup the 3rd party types. Make sure that if we had drop downs
 								// that we let the ajax for that be done first
 								selectPromise ? selectPromise.done(setupTypes) : setupTypes();
+
 								
 								// empty cells kinda mess with things
 								if(cellValue == "") cellValue = "&nbsp;";
