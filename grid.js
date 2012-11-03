@@ -77,6 +77,7 @@ var grids = [];
 				}
 			},
 			"image": function(value, columnOpts, grid) {
+				console.log("image type",value,columnOpts,grid);
 				return {
 					cellClass: "center",
 					cellValue: "<img src='"+value+"'/>"
