@@ -8,6 +8,16 @@
 
 **For all the documentation and examples, see <http://square-bracket.com/openjs>**
 
+
+##### Current Version 2.1
+ - Column resizing is fixed
+ - touch enabled partially working
+ - slider is bigger when using touch
+ - class touch is givent to the grid when its touch enabled
+ - the 'dynamic' property is given to columns that are dynamically created
+ - new minWidthForDynamicCols added for dynamic columns
+ - minWidth is now utilized in css
+
 ### Getting Started
 
 #### HTML Setup
@@ -46,7 +56,7 @@ Basically, the whole idea here is that in backend coding, you have to make a ton
 
 Once more, I believe data grids should still be written as HTML tables, with very little javascript config.  So that's why the setup is an HTML table. You can also specificy column options as attributes on the `<th>` elements. That's so you can have dynamic grids, and less javascript config.
 
-#### The Features 2.0
+#### The Features 2.1
 
 - Sorting
 - Live Filtering
