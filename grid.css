@@ -110,6 +110,7 @@ div.gridWrapper .gridResizer {
 div.gridWrapper .columns {
   height: inherit;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   opacity: 1;
   -ms-filter: none;
   filter: none;
@@ -282,9 +283,9 @@ div.gridWrapper .gridPager .slider .slider .sliderTrack {
 div.gridWrapper .gridPager .slider .slider .sliderThumb {
   width: 13px;
   height: 13px;
+  margin-top: -7px;
   -webkit-border-radius: 6px;
   border-radius: 6px;
-  margin-top: -7px;
   -webkit-box-shadow: 0px 0px 4px #333;
   box-shadow: 0px 0px 4px #333;
   background: -webkit-gradient(linear, left top, left bottom, color-stop(0, #fff), color-stop(0.5, #f1f1f1), color-stop(0.51, #e1e1e1), color-stop(1, #f6f6f6));
@@ -352,6 +353,11 @@ div.gridWrapper .gridPager .search input:focus:after {
 }
 div.gridWrapper select {
   width: 100%;
+}
+div.gridWrapper.touch .gridPager .slider .sliderThumb {
+  width: 23px;
+  height: 23px;
+  margin-top: -13px;
 }
 .ui-datepicker {
   z-index: 2;

@@ -29,7 +29,7 @@ var grids = [];
 		opts : {
 			title : "",					// title attribute on this table
 			action : "",				// action url on this table		
-			nRowsShowing : 15,			// number of rows to show on load
+			nRowsShowing : 10,			// number of rows to show on load
 			minAllowedColWidth : 50,	// when auto sizing columns, they can't be less than this size
 			class : "",					// classes on this table
 			showPager : true,
@@ -116,6 +116,7 @@ var grids = [];
 		$columns : null,
 		$cols : null,
 		firstLoad : true,
+		_stopColumnDrag : false,
 		
 		// *********************************************************************************
 		// *********************************************************************************
@@ -198,6 +199,9 @@ var grids = [];
 			
 			// store some stuff we need
 			this.sbWidth = this._calculateScrollbarWidth();
+			
+			// add the touch class if we have a touch devince
+			!!('ontouchstart' in window) && $grid.addClass("touch");
 
 			// call the load when the object is built
 			this.load();
@@ -264,7 +268,7 @@ var grids = [];
 			function, and it being fast. Trying to optimize this as much as possible
 		
 		*******/
-		_equalize : function() {
+		_equalize : function(amt) {
 			var $grid = $(this.el),										// our grid
 				$columns = this.$columns,								// single columns container
 				$cols = this.$cols,										// collection of each column
@@ -281,6 +285,7 @@ var grids = [];
 				var originalWidth = $grid.width(),						// current width of the grid
 					fullWidth = originalWidth - sbWidth,	 			// adjust width to scrollbar so we know how much space to fill
 					oFullWidth = fullWidth;
+			this.oFullWidth = oFullWidth;
 			
 			// adjust number of columns and full width to reflect manually set widths
 			for(colName in columns) {
@@ -298,6 +303,7 @@ var grids = [];
 				}
 			}
 			
+			this.allWidths = 0;
 			for(i=0, l = $cols.length; i<l; i++) {
 				col = $cols[i];
 				name = col.getAttribute("col");
@@ -306,10 +312,29 @@ var grids = [];
 					typeof columns[name].width != "undefined"
 				),
 				colWidth = customWidth ? parseInt(columns[name].width) : fullWidth / nCols;
-				// last col needs to be minus 1
-				if(i == l-1) colWidth--
-				col.style.width = colWidth + "px";
+				// figured out an allowance for this column
+				var allowed = this.columns[name].width || minAllowedColWidth;
+				// set colWidth to whatever it was, or the allowed amt
+				colWidth = colWidth >= allowed ? colWidth : allowed;
+				
+				if(this.allWidths+colWidth > 750) {
+					//console.log(this.allWidths+colWidth,oFullWidth,amt);
+				}
+				
+				if(~~(this.allWidths+colWidth) > oFullWidth) {
+					this._stopColumnDrag = true;
+				} else {
+				
+					// last col needs to be minus 1
+					if(i == l-1) colWidth--
+					col.style.width = colWidth + "px";
+					this.allWidths += colWidth;
+					this._stopColumnDrag = false;
+				}
+					
 			}
+			
+			//this._stopColumnDrag = allWidths >= oFullWidth;
 			
 		},
 		
@@ -321,7 +346,7 @@ var grids = [];
     			$cell = $(el).parent(),
     			cell = $cell[0],
     			col = cell.getAttribute("col");
-    		
+
     		// prevent selections
 	    	$grid.addClass("resizing");
     		
@@ -334,14 +359,25 @@ var grids = [];
     			$grid.removeClass("resizing");
     			self._equalize();
     		});
-    		var d;
+    		var d, $cols = this.$cols, l = this.$cols.length;
     		$(document).bind("mousemove.grid",function(e) {
-	    		// manipulate the stored width
-				self.columns[col].width += (e.clientX - startX);
-				// adjust the header cell width so it can affect the others
-				startX = e.clientX;
-				// adjust the rest, except the header cell
-				self._equalize();
+    			// width to be
+    			var amt = (e.clientX - startX);
+    			// make sure we're within our rights
+    			if(self.columns[col].width + amt > self.opts.minAllowedColWidth) {
+    				// getting smaller, or not stopped.
+    				if(amt < 0 || !self._stopColumnDrag) {;
+			    		// manipulate the stored width
+			    		//amt = amt<0 ? -1 : 1;
+						self.columns[col].width += amt;
+						// adjust the header cell width so it can affect the others
+						startX = e.clientX;
+						// adjust the rest, except the header cell
+						self._equalize(amt);
+					} else {
+						self._equalize();
+					}
+				}
     		});
 		},
 		
@@ -349,7 +385,7 @@ var grids = [];
 		_gridResize: function(e,el) {
 			// starting pos
     		var self = this,
-    			startX = e.clientX,
+    			startX = e.clientX;
     			$grid = $(self.el);
     		
     		// turn off selection while resizing
@@ -1200,10 +1236,11 @@ var grids = [];
 		val : 0,
 		startX : 0,
 		_construct : function() {
-			// our thumb
-			//this.thumb = $(this.pager.el).find(".sliderThumb");
+			this.onMove = $(this.pager.grid.el).hasClass("touch") ? "touchmove" : "mousemove";
+			this.onStart = $(this.pager.grid.el).hasClass("touch") ? "touchstart" : "mousedown";
+			this.onEnd = $(this.pager.grid.el).hasClass("touch") ? "touchend" : "mouseup";
 			// mouse down start
-			$(this.pager.el)._on("mousedown", ".sliderThumb",this.start, this);
+			$(this.pager.el)._on(this.onStart, ".sliderThumb",this.start, this);
 		},
 		// since the pager is reconstructed each time, we need to update the DOM elements for slider
 		update : function() {
@@ -1212,16 +1249,19 @@ var grids = [];
 			this.max = this.pager.totalPages;
 		},
 		start : function(e,el) {
-			this.startX = e.clientX;
+			
+			// setup start
+			this.startX = e.clientX || e.originalEvent.touches[0].clientX;
+			
 			// mouse move to slide
-    		$(this.pager.el)._on("mousemove.slider",this.slide,this);
-    		$(document)._on("mouseup.slider",this.stop,this);	
+    		$(this.pager.el)._on(this.onMove+".slider",this.slide,this);
+    		$(document)._on(this.onEnd+".slider",this.stop,this);	
 		},
 		stop : function() {
 			// remove the mousemove
-			$(this.pager.el).off("mousemove.slider");
+			$(this.pager.el).off(this.onMove+".slider");
 			// remove the mousup
-			$(document).off("mouseup.slider");
+			$(document).off(this.onEnd+".slider");
 			// go to page when stopped
 			this.pager.goto(this.val);
 		},
@@ -1241,7 +1281,11 @@ var grids = [];
 		slide : function (e,el) {
 			var self = this;
 			if(~["slider","sliderThumb","sliderSpan","sliderTrack"].indexOf(e.target.className)) {
-	
+				
+				// touch fix
+				e.clientX = e.clientX || e.originalEvent.touches[0].clientX;
+
+				
     			// current left and new left
     			var $thumb = $(self.thumb),
     				mleft = parseFloat($thumb.css("margin-left")),

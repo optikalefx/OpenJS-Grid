@@ -89,6 +89,7 @@ div.gridWrapper
 	.columns
 		height:inherit
 		overflow-x:hidden
+		-webkit-overflow-scrolling: touch
 		opacity 1
 	
 		&.blur
@@ -191,6 +192,7 @@ div.gridWrapper
 		.col
 			float:left
 			//overflow:hidden
+			//display inline-block
 			
 			&._checkbox .headerCell
 				text-align:center
@@ -240,11 +242,13 @@ div.gridWrapper
 				.sliderThumb
 					width:13px
 					height:13px
-					border-radius:6px
 					margin-top: -7px;
+					
+					border-radius:6px
 					box-shadow: 0px 0px 4px #333
 					background: linear-gradient(top, #ffffff 0%,#f1f1f1 50%,#e1e1e1 51%,#f6f6f6 100%)
 					cursor:pointer
+		
 		.currentPage, .search
 			input
 				float: left;
@@ -285,6 +289,12 @@ div.gridWrapper
 				background-position: -48px 0px;
 	select
 		width 100%
+	
+	&.touch
+		.gridPager .slider .sliderThumb
+			width:23px
+			height:23px
+			margin-top: -13px;
 
 .ui-datepicker
 	z-index 2
