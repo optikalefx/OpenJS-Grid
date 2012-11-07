@@ -159,6 +159,7 @@ div.gridWrapper
 				user-select : none
 				background: linear-gradient(top, #ffffff 0%,rgb(228,228,228) 100%)
 				z-index 2
+				min-width 50px
 				
 				span 
 					font-weight:bold
@@ -191,8 +192,15 @@ div.gridWrapper
 		
 		.col
 			float:left
+			min-width 50px
+			//max-width 150px
 			//overflow:hidden
 			//display inline-block
+			
+			&.dynamic
+				min-width 20px
+				.headerCell
+					min-width 20px
 			
 			&._checkbox .headerCell
 				text-align:center

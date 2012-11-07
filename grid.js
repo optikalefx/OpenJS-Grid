@@ -31,6 +31,7 @@ var grids = [];
 			action : "",				// action url on this table		
 			nRowsShowing : 10,			// number of rows to show on load
 			minAllowedColWidth : 50,	// when auto sizing columns, they can't be less than this size
+			minWidthForDynamicCols : 20,// dynamic cols, like row number and checkboxes have a smaller min width
 			class : "",					// classes on this table
 			showPager : true,
 			deleting : false,
@@ -282,59 +283,37 @@ var grids = [];
 				columns = this.columns,									// our columns object
 				colName, col, i, name, customWidth, colwidth;			// extra vars
 			
-				var originalWidth = $grid.width(),						// current width of the grid
-					fullWidth = originalWidth - sbWidth,	 			// adjust width to scrollbar so we know how much space to fill
-					oFullWidth = fullWidth;
-			this.oFullWidth = oFullWidth;
+				var originalWidth = $grid.width();						// current width of the grid
+				this.fullWidth = originalWidth - sbWidth;	 			// adjust width to scrollbar so we know how much space to fill
+				var playWidth = this.fullWidth;							// playWidth is how much space minus set widths do we have
 			
 			// adjust number of columns and full width to reflect manually set widths
 			for(colName in columns) {
 				col = columns[colName];
-				if(typeof col.width != "undefined") {
-					if(fullWidth - parseInt(col.width) > minAllowedColWidth) { 
+				if("width" in col) {
+					if(playWidth - parseInt(col.width) > minAllowedColWidth) { 
 						// adjust width for custom width cells
-						fullWidth -= parseInt(col.width);
+						playWidth -= parseInt(col.width);
 						// no longer count this cell
 						nCols--;
-					} else {
-						// if we set this to undefined, it will now be used in the standard distribution
-						columns[colName].width = undefined;
 					}
 				}
 			}
-			
-			this.allWidths = 0;
+
 			for(i=0, l = $cols.length; i<l; i++) {
 				col = $cols[i];
 				name = col.getAttribute("col");
-				customWidth = (
-					typeof columns[name] != "undefined" && 
-					typeof columns[name].width != "undefined"
-				),
-				colWidth = customWidth ? parseInt(columns[name].width) : fullWidth / nCols;
-				// figured out an allowance for this column
-				var allowed = this.columns[name].width || minAllowedColWidth;
-				// set colWidth to whatever it was, or the allowed amt
-				colWidth = colWidth >= allowed ? colWidth : allowed;
 				
-				if(this.allWidths+colWidth > 750) {
-					//console.log(this.allWidths+colWidth,oFullWidth,amt);
-				}
+				// bool if we have a customWidth or not
+				customWidth = "width" in this.columns[name];
 				
-				if(~~(this.allWidths+colWidth) > oFullWidth) {
-					this._stopColumnDrag = true;
-				} else {
+				// if we have a custom width, use that, otherwise, figure it out based on fullWidth / nCols
+				colWidth = customWidth ? parseInt(columns[name].width) : playWidth / nCols;
 				
-					// last col needs to be minus 1
-					if(i == l-1) colWidth--
-					col.style.width = colWidth + "px";
-					this.allWidths += colWidth;
-					this._stopColumnDrag = false;
-				}
+				// apply the width to that column
+				col.style.width = colWidth + "px";
 					
 			}
-			
-			//this._stopColumnDrag = allWidths >= oFullWidth;
 			
 		},
 		
@@ -342,16 +321,36 @@ var grids = [];
 		_columnResize : function(e,el) {
 			var self = this,
 				$grid = $(self.el),
+				customWidth, minSpace, i, l, maxWidth, minWidth,
 				startX = e.clientX,
     			$cell = $(el).parent(),
     			cell = $cell[0],
-    			col = cell.getAttribute("col");
+    			colName = cell.getAttribute("col"),
+    			colOpts = this.columns[colName];
 
     		// prevent selections
 	    	$grid.addClass("resizing");
     		
     		// store this so we dont have to access the dom anymore
-    		self.columns[col].width = $cell.width();
+    		colOpts.width = $cell.width();
+    		
+    		// figure out the max this column can go
+    		$cols = this.$cols;
+    		minSpace = 0;
+    		for(i=0, l = $cols.length; i<l; i++) {
+				col = $cols[i];
+				name = col.getAttribute("col");
+				// ingore the column were about to resize
+				if(name != colName) {
+					customWidth = "width" in this.columns[name];
+					// continue adding up the space the other columns take up
+					minSpace += customWidth ? parseInt(this.columns[name].width) : parseInt(this.opts.minAllowedColWidth);
+				}	
+			}
+			
+			// determine min and max width for this column
+			maxWidth = this.fullWidth - minSpace;
+			minWidth = ("dynamic" in colOpts) ? this.opts.minWidthForDynamicCols : this.opts.minAllowedColWidth;
 
     		// COLUMN RESIZING
     		$(document).bind("mouseup.grid",function() {
@@ -359,24 +358,19 @@ var grids = [];
     			$grid.removeClass("resizing");
     			self._equalize();
     		});
-    		var d, $cols = this.$cols, l = this.$cols.length;
+    		
+    		$cols = this.$cols, l = this.$cols.length;
     		$(document).bind("mousemove.grid",function(e) {
     			// width to be
     			var amt = (e.clientX - startX);
     			// make sure we're within our rights
-    			if(self.columns[col].width + amt > self.opts.minAllowedColWidth) {
-    				// getting smaller, or not stopped.
-    				if(amt < 0 || !self._stopColumnDrag) {;
-			    		// manipulate the stored width
-			    		//amt = amt<0 ? -1 : 1;
-						self.columns[col].width += amt;
-						// adjust the header cell width so it can affect the others
-						startX = e.clientX;
-						// adjust the rest, except the header cell
-						self._equalize(amt);
-					} else {
-						self._equalize();
-					}
+				if(colOpts.width + amt < maxWidth && colOpts.width + amt > minWidth) {
+					// change the width
+					colOpts.width += amt;
+					// adjust the header cell width so it can affect the others
+					startX = e.clientX;
+					// adjust the rest, except the header cell
+					self._equalize();
 				}
     		});
 		},
@@ -927,7 +921,7 @@ var grids = [];
 			}
 			
 			// create the new column from template
-			var newCol = "<div class='col' col='"+col+"'>",
+			var newCol = "<div class='col dynamic' col='"+col+"'>",
 				$newCol,pkey;
 			
 			// column header stuff
@@ -959,8 +953,11 @@ var grids = [];
 			// add to the DOM
 			this._insertCol($newCol,opts.insertAt);
 			
+			// note that this is dynamically added
+			opts.dynamic = true;
+			
 			// if we passed in options, add those to the columns object
-			if(!opts) opts = {}; this.columns[col] = opts;
+			this.columns[col] = opts;
 			
 			// resize with our new column
 			this._cacheSize();

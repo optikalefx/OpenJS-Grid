@@ -188,6 +188,7 @@ div.gridWrapper .columns .cell.headerCell {
   background: -ms-linear-gradient(top, #fff 0%, #e4e4e4 100%);
   background: linear-gradient(top, #fff 0%, #e4e4e4 100%);
   z-index: 2;
+  min-width: 50px;
 }
 div.gridWrapper .columns .cell.headerCell span {
   font-weight: bold;
@@ -228,6 +229,13 @@ div.gridWrapper .columns .cell.headerCell .resizer {
 }
 div.gridWrapper .columns .col {
   float: left;
+  min-width: 50px;
+}
+div.gridWrapper .columns .col.dynamic {
+  min-width: 20px;
+}
+div.gridWrapper .columns .col.dynamic .headerCell {
+  min-width: 20px;
 }
 div.gridWrapper .columns .col._checkbox .headerCell {
   text-align: center;
