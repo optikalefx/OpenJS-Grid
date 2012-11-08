@@ -685,8 +685,9 @@ var grids = [];
 				}
 			}
 			// get all the drop downs, store the promise in case we wanna check this
-			if(selectCols.length) {
+			if(selectCols.length && !self.selects) {
 				selectPromise = $.post(this.opts.action,{select : true, cols : selectCols},function(data) {
+					// by saving the data, we dont ever have to do this ajax call again til page reload
 					self.selects = data;
 					return true;
 				});
@@ -730,6 +731,7 @@ var grids = [];
 					// to keep adding strings to the return for speed
 					colHtml +=  self._render("columnHeader")(colOpts);
 					
+					// when our ajax is done, move on.
 					selectPromise.done(function() {
 					
 						for(key in data.rows) {
