@@ -677,7 +677,7 @@ var grids = [];
 			/////////////////////////
 			// LOAD SELECT BOXES
 			////////////////////////
-			var selCol, colName, selectCols = [], selectPromise = false;
+			var selCol, colName, selectCols = [], selectPromise = $.Deferred();
 			for(colName in this.columns) {
 				selCol = this.columns[colName];
 				if(typeof selCol.type != "undefined" && selCol.type == "select") {
@@ -690,6 +690,8 @@ var grids = [];
 					self.selects = data;
 					return true;
 				});
+			} else {
+				selectPromise.resolve();
 			}
 			
 			promise = $.post(this.opts.action,packet,function(data) {
@@ -728,71 +730,59 @@ var grids = [];
 					// to keep adding strings to the return for speed
 					colHtml +=  self._render("columnHeader")(colOpts);
 					
-					// cache this outside the loop
-					var setupTypes = function() {
-						if(typeof self.cellTypes[colOpts.type] == "function") {
-							
-							typeOpts = self.cellTypes[colOpts.type](cellValue,colOpts,self);
-							
-							// protect a no return
-							if(typeof typeOpts == "undefined") typeOpts = {cellValue : cellValue,cellClass: ""};
-
-							cellValue = typeOpts.cellValue;
-							cellClass = typeOpts.cellClass;
-						}
-						return true;
-					}
+					selectPromise.done(function() {
 					
-					for(key in data.rows) {
-						pkey = key.substr(1);
-						row = data.rows[key];
-						for(rowCol in row) {
-							if(rowCol === col) {
-								
-								// main value
-								cellValue = row[col],
-								cellClass = "";
-								
-								// setup the 3rd party types. Make sure that if we had drop downs
-								// that we let the ajax for that be done first
-								if(selectPromise) {
-									//console.log("promise is true", self.el);
-									selectPromise.done(function() {
-										console.log("done setting up", self.el);
-										setupTypes();
-									});
-								} else {
-									//console.log("promise is false", self.el);
-									setupTypes();
-								}
-
-								
-								// empty cells kinda mess with things
-								if(cellValue == "") cellValue = "&nbsp;";
+						for(key in data.rows) {
+							pkey = key.substr(1);
+							row = data.rows[key];
+							for(rowCol in row) {
+								if(rowCol === col) {
 									
-								// add linking
-								// this is not a type because you can link anything by adding href
-								if(colOpts.href) {
-									// make some tokens for use in the href
-									var linkTokens = {value : cellValue}
-									// add all the column values, column.Title i.e.
-									for(var aCol in row) linkTokens["columns."+aCol] = row[aCol];
-									// render the href with the tokens
-									var href = self._render(colOpts.href)(linkTokens);
-									// wrap the cell value in an a tag with the rendered href 
-									cellValue = "<a href='"+href+"'>"+cellValue+"</a>";
+									// main value
+									cellValue = row[col],
+									cellClass = "";
+									
+									// setup some types
+									if(typeof self.cellTypes[colOpts.type] == "function") {
+							
+										typeOpts = self.cellTypes[colOpts.type](cellValue,colOpts,self);
+										
+										// protect a no return
+										if(typeof typeOpts == "undefined") typeOpts = {cellValue : cellValue,cellClass: ""};
+			
+										cellValue = typeOpts.cellValue;
+										cellClass = typeOpts.cellClass;
+									}
+	
+									
+									// empty cells kinda mess with things
+									if(cellValue == "") cellValue = "&nbsp;";
+										
+									// add linking
+									// this is not a type because you can link anything by adding href
+									if(colOpts.href) {
+										// make some tokens for use in the href
+										var linkTokens = {value : cellValue}
+										// add all the column values, column.Title i.e.
+										for(var aCol in row) linkTokens["columns."+aCol] = row[aCol];
+										// render the href with the tokens
+										var href = self._render(colOpts.href)(linkTokens);
+										// wrap the cell value in an a tag with the rendered href 
+										cellValue = "<a href='"+href+"'>"+cellValue+"</a>";
+									}
+									
+									// create the cell from template
+									colHtml += self._render("cell")({
+										cl : cellClass,
+										id : pkey,
+										col : col, 
+										val : cellValue
+									});
 								}
-								
-								// create the cell from template
-								colHtml += self._render("cell")({
-									cl : cellClass,
-									id : pkey,
-									col : col, 
-									val : cellValue
-								});
 							}
 						}
-					}
+					})
+					
 					colHtml += "</div>";
 				}
 				
