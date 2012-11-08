@@ -756,10 +756,13 @@ var grids = [];
 								// setup the 3rd party types. Make sure that if we had drop downs
 								// that we let the ajax for that be done first
 								if(selectPromise) {
-									console.log("promise is true", self.el);
-									selectPromise.done(setupTypes);
+									//console.log("promise is true", self.el);
+									selectPromise.done(function() {
+										console.log("done setting up", self.el);
+										setupTypes();
+									});
 								} else {
-									console.log("promise is false", self.el);
+									//console.log("promise is false", self.el);
 									setupTypes();
 								}
 
