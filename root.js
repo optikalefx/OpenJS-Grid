@@ -136,7 +136,6 @@
 
 			// this does our Grid = Root.inherit(stuff)
 			// so this is just like the main definition of the main object
-			console.log("creating main Grid object");
 			var Obj = this.inherit.apply(this,args);
 			
 			// create the jQuery Plugin
