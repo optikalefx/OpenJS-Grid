@@ -717,26 +717,26 @@ var grids = [];
 				// this is 1000000x times faster than dom manipulation
 				self.rows = data.rows;
 				
-				// build the table in column form, instead of row form
-				for(col in self.columns) {
-					
-					// options on the column
-					colOpts = self.columns[col];
-					
-					// opening col div
-					colHtml += "<div class='col _"+(colOpts.type || '')+"' col='"+col+"'>";
-					
-					// blank cells mess things up
-					if(colOpts.header == "") colOpts.header = "&nbsp;"
-					
-					// add header cell with resizer, sortable bar and blank cell
-					// this is only the header and not the whole column because we want the ability
-					// to keep adding strings to the return for speed
-					colHtml +=  self._render("columnHeader")(colOpts);
-					
-					// when our ajax is done, move on.
-					selectPromise.done(function() {
-					
+				// when our ajax is done, move on.
+				selectPromise.done(function() {
+				
+					// build the table in column form, instead of row form
+					for(col in self.columns) {
+						
+						// options on the column
+						colOpts = self.columns[col];
+						
+						// opening col div
+						colHtml += "<div class='col _"+(colOpts.type || '')+"' col='"+col+"'>";
+						
+						// blank cells mess things up
+						if(colOpts.header == "") colOpts.header = "&nbsp;"
+						
+						// add header cell with resizer, sortable bar and blank cell
+						// this is only the header and not the whole column because we want the ability
+						// to keep adding strings to the return for speed
+						colHtml +=  self._render("columnHeader")(colOpts);
+						
 						for(key in data.rows) {
 							pkey = key.substr(1);
 							row = data.rows[key];
@@ -786,22 +786,23 @@ var grids = [];
 								}
 							}
 						}
-					})
+		
+						colHtml += "</div>";
+					}
 					
-					colHtml += "</div>";
-				}
+					// hide our loading
+					$grid.find(".gridLoading").hide();
+					
+					// place all the content
+					$columns.html(colHtml);
+									
+					// do things after ajax
+					self._afterLoad();
+					
+					// register loadComplate Callback
+					$(self.el).trigger("loadComplete");
 				
-				// hide our loading
-				$grid.find(".gridLoading").hide();
-				
-				// place all the content
-				$columns.html(colHtml);
-								
-				// do things after ajax
-				self._afterLoad();
-				
-				// register loadComplate Callback
-				$(self.el).trigger("loadComplete");
+				});
 
 			},"json");
 			
