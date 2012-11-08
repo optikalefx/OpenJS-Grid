@@ -310,6 +310,9 @@ var grids = [];
 				// if we have a custom width, use that, otherwise, figure it out based on fullWidth / nCols
 				colWidth = customWidth ? parseInt(columns[name].width) : playWidth / nCols;
 				
+				// meh
+				if(i == l-1) colWidth -= 1;
+				
 				// apply the width to that column
 				col.style.width = colWidth + "px";
 					
