@@ -416,7 +416,7 @@ Class Grid {
 		$limit = "LIMIT $startRow,$nRowsShowing";
 		
 		// if were searching, see if we want all results or not
-		if(isset($_POST['pager']) && $_POST['pager'] == "false" || (!empty($_POST['search']) && $_POST['pageSearchResults'] == "false")) {
+		if(isset($_POST['pager']) && $_POST['pager'] == "false" || (!empty($_POST['search']) && isset($_POST['pageSearchResults']))) {
 			$limit = "";
 		}
 		
@@ -459,7 +459,7 @@ Class Grid {
 		}
 		
 		// if were searching and we dont want all the results - dont run a 2nd query
-		if(isset($_POST['pager']) && $_POST['pager'] == "false" || (!empty($_POST['search']) && $_POST['pageSearchResults'] == "false")) {
+		if(isset($_POST['pager']) && $_POST['pager'] == "false" || (!empty($_POST['search']) && isset($_POST['pageSearchResults']))) {
 			$data['nRows'] = count($rows);
 			$startRow = 0;
 			$nRowsShowing = $data['nRows'];
