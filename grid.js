@@ -1283,7 +1283,6 @@ var grids = [];
 				// touch fix
 				e.clientX = e.clientX || e.originalEvent.touches[0].clientX;
 
-				
     			// current left and new left
     			var $thumb = $(self.thumb),
     				mleft = parseFloat($thumb.css("margin-left")),
@@ -1302,8 +1301,11 @@ var grids = [];
 				
 				// all other cases
 				} else {
-					self.val = ~~((pos / end) * self.max);
+					val = ~~((pos / end) * self.max);
+					self.val = val || 1; // can't go to 0
 				}
+				
+				
 								
 				// set the thumb
 				$(self.thumb).css("margin-left",pos);
