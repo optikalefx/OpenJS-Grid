@@ -9,6 +9,9 @@ var grids = [];
 		adding
 		multigrids
 		row-highlight
+		
+		added columns should not take a function for value, should use the cellTypes array
+		
 	*/
 	
 	
@@ -1110,10 +1113,12 @@ var grids = [];
 			e.preventDefault();
 			var self = this, i, rows = {};
 			
-			// get the rows we need from the rows object	
+			// get the rows we need from the rows object
+			var pkeys = [];
 			for(i=0; i< this.toSave.length; i++) {
 				var pkey = this.toSave[i]
 				rows[pkey] = this.rows["_"+pkey];
+				pkeys.push(pkey);
 			}
 
 			// post save
@@ -1122,10 +1127,10 @@ var grids = [];
 				json : rows,
 				saveable : self.saveable
 			}, function(res) {
-				if(res) {
-					self.alert("info","Saved!","Row "+pkey+" has been saved");
+				if(res == 1) {
+					self.alert("info","Saved!",i + " Row(s) saved");
 				} else {
-					self.error("Failed to save");
+					self.error(res);
 				}	
 							
 			});

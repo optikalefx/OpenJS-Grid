@@ -94,10 +94,8 @@ Class Grid {
 
 			// die with messages if fail
 			$this->dieOnError($sql);
-			
-			return (bool) $res;
-		}	
-			
+		}
+		return (bool) $res;
 	}
 	
 	// use this to write your own custom save function for the data
@@ -519,7 +517,7 @@ Class Grid {
 	// if there is a mysql error it will die with that error
 	function dieOnError($sql) {
 		if($e=mysql_error()) {
-			var_dump($sql);
+			//var_dump($sql);
 			die($e);
 		}
 	}
