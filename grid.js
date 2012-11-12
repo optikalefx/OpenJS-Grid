@@ -38,6 +38,7 @@ var grids = [];
 			class : "",					// classes on this table
 			showPager : true,
 			deleting : false,
+			deleteConfirm: true,
 			checkboxes : false,
 			rowNumbers : false,
 			editing : false,
@@ -661,7 +662,7 @@ var grids = [];
 			var self = this, packet, promise, rowHtml = "", colHtml = "", 
 				col = 0, key = 0, pKey, rowCol = 0, cellValue, checked = 0,
 				cellClass = "", type;
-
+	
 			// if we are reloading with options pass them in
 			// if(opts) this.grid(opts);
 			if(opts) this.opts = this.extend(this.opts,opts);
@@ -703,7 +704,6 @@ var grids = [];
 			
 			promise = $.post(this.opts.action,packet,function(data) {
 				self.el = el;	// fixes some problem i dont know :(
-				
 				var $grid = $(self.el),
 					$columns = $grid.find(".columns");
 				
@@ -912,8 +912,6 @@ var grids = [];
 			// we need to recache the scroll height account for scrollbars
 			
 			//this.scrollHeight = $grid.find(".columns")[0].scrollHeight;
-			//console.log($grid.find(".col:first").height());
-			//console.log("calling equalize");
 			this.aColumnHeight = $grid.children(".columns").children(".col:first").height();
 			this._equalize();
 		},
@@ -1094,12 +1092,19 @@ var grids = [];
 						// function for timeout
 						var fadeRow = function() {
 							$(this).remove();
-							self.alert("info", "Deleted!", "Row "+id+" has been deleted");
+							
+							// don't pop this up unless they pass it in
+							if(self.opts.deleteConfirm) {
+								self.alert("info", "Deleted!", "Row "+id+" has been deleted");
+							}
 						}
 						// fade this row out
 						$(self.el).find(".grid-row-"+id).fadeOut(500);
 						// after the fade, remove the row, dont do this in the callback, it will call many times
 						setTimeout(fadeRow,500);
+						
+						var rowData = self.rows["_"+id];
+						$(self.el).trigger("rowDelete",[self.getRow(id), rowData]);
 						
 					} else {
 						self.error("Failed to delete");
