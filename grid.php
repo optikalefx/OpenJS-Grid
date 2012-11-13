@@ -122,7 +122,7 @@ Class Grid {
 	function delete() {
 		$post = $this->_safeMysql();
 		$primaryKey = $this->getPrimaryKey();
-		return mysql_query("DELETE FROM {$this->table} WHERE $primaryKey = '$post[id]'");
+		return mysql_query("DELETE FROM {$this->table} WHERE `$primaryKey` = '$post[id]'");
 	}
 	
 	function select($selects) {
