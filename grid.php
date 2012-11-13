@@ -233,10 +233,13 @@ Class Grid {
 		
 		// get an array of saveable fields
 		$saveable = $colsArray;
-		foreach($fields as $field=>$detail) {
-			foreach($saveable as $k=>$f) {
-				if( $f == $field ) {
-					unset($saveable[$k]);
+		// bug #1# @eric.tuvesson@gmail.com
+		if(is_array($fields)) {
+			foreach($fields as $field=>$detail) {
+				foreach($saveable as $k=>$f) {
+					if( $f == $field ) {
+						unset($saveable[$k]);
+					}
 				}
 			}
 		}
