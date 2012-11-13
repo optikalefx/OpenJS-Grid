@@ -88,7 +88,7 @@ Class Grid {
 				}	
 			}
 			
-			$sql = "UPDATE {$this->table} SET ".implode(",",$setArray)." WHERE $primaryKey = '$rowId'";
+			$sql = "UPDATE {$this->table} SET ".implode(",",$setArray)." WHERE `$primaryKey` = '$rowId'";
 			
 			$res = mysql_query($sql);
 
