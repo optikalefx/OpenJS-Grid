@@ -1414,7 +1414,7 @@ var grids = [];
 				// setup slider
 				var nRows = this.grid.totalRows,
 					showing = this.grid.opts.nRowsShowing,
-					nPages = ~~(nRows / showing);
+					nPages = Math.ceil(nRows / showing);
 					
 				this.slider = Slider.inherit({
 					pager : this,
