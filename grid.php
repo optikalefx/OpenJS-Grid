@@ -47,7 +47,12 @@ Class Grid {
 			$this->fields = array();
 			
 			$call = $options['select'];
-			$call($this);
+			if(is_array($call)) {
+				call_user_func($call,$this);
+			} else {
+				$call($this);
+			}
+			
 
 		// load
 		} else {
