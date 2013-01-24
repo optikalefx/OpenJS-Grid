@@ -1,5 +1,6 @@
 // Open JS Grid Version 2
 // Requires RootJS
+
 var grids = [];
 (function($) {
 
@@ -142,8 +143,13 @@ var grids = [];
 			var $wrapper = $("<div class='gridWrapper'><span class='gridLoading'>Loading</span></div>");
 			$wrapper.insertAfter($table)
 					.append($columns)
-					.width(this.opts.width)
-					
+					.width(this.opts.width);
+			
+			// add classes from opts
+			if(this.opts.class) {
+				$wrapper.addClass(this.opts.class);
+			}
+			
 			// its cheaper to alter the stylesheet via JS instead of each cell after load
 			if(this.opts.rowHeight) {
 				var ss = document.styleSheets;
@@ -239,7 +245,7 @@ var grids = [];
         	$grid._on("click",".cell", self._handleCellClick, self);
 			
 			// checkbox saving
-			$grid._on("click",".cell .rowCheck", self.markForSaving, self);
+			$grid._on("click",".cell :checkbox", self.markForSaving, self);
 			
 			// as you type, keep the object up to date
         	$grid._on("click",".headerCell", self.sort, self);
@@ -290,7 +296,7 @@ var grids = [];
 				var originalWidth = $grid.width();						// current width of the grid
 				this.fullWidth = originalWidth - sbWidth;	 			// adjust width to scrollbar so we know how much space to fill
 				var playWidth = this.fullWidth;							// playWidth is how much space minus set widths do we have
-			
+				
 			// adjust number of columns and full width to reflect manually set widths
 			for(colName in columns) {
 				col = columns[colName];
@@ -310,6 +316,8 @@ var grids = [];
 				
 				// bool if we have a customWidth or not
 				customWidth = "width" in this.columns[name];
+				
+				// test pct here
 				
 				// if we have a custom width, use that, otherwise, figure it out based on fullWidth / nCols
 				colWidth = customWidth ? parseInt(columns[name].width) : playWidth / nCols;
@@ -477,7 +485,7 @@ var grids = [];
 			/////////////////////////
 			// ADD ROW NUMBER COLUMN
 			////////////////////////
-			if(this.opts.rowNumbers) {
+			if(this.opts.rowNumbers && !Array.isArray(this.rows)) {
 				// add the column with a width
 				var $newCol = this.addColumn("rowNumbers", {
 					width: 35, 
@@ -485,7 +493,7 @@ var grids = [];
 					header : "&nbsp;",
 					cellClass : "center"
 				}, function(i) {
-					return i + 1;
+					return i + self.start;
 				})
 			}
 			
@@ -528,6 +536,14 @@ var grids = [];
 			// were done loading, close the notification
 			self.loadingDialog.close();
 			
+			if($grid.width() < 600) {
+				 $grid.addClass("small");
+				 self.pager.slider.update();
+			} else if($grid.hasClass("small")) {
+				$grid.removeClass("small");
+				self.pager.slider.update();
+			}
+			
 			// mark first load
 			this.firstLoad = false;
 
@@ -559,7 +575,6 @@ var grids = [];
 			// trigger row click
 			$rows = this.getRow(id);
 			// this isn't sending the array?
-			
 			$(this.el).trigger("rowClick", [$rows,rowData]);
 		},
 		
@@ -590,16 +605,16 @@ var grids = [];
 		_templates : {
 			deleteButton : "<button class='gridDeleteRow btn btn-mini'>X</button>",
 			cell : "<div class='cell {{cl}} grid-row-{{id}}' data-row='{{id}}' data-col='{{col}}'>{{val}}</div>",
-			columnHeader : "\
-				<div class='cell headerCell' col='{{col}}'>\
+			columnHeader : ""+
+				"<div class='cell headerCell' col='{{col}}'>\
 					<span>{{header}}</span>\
 					<div class='resizer'></div>\
 					<div class='sortbar'>&#9662;</div>\
 				</div>\
 				<!--<div class='cell blankCell' col='{{col}}'>Blank</div>-->\
 			",
-			confirm : "\
-				<div class='dialog gridConfirm'>\
+			confirm : ""+
+				"<div class='dialog gridConfirm'>\
 					<span>{{msg}}</span>\
 					<div class='buttons'>\
 						<button class='btn confirmOk'>OK</button>\
@@ -607,8 +622,8 @@ var grids = [];
 					</div>\
 				</div>\
 			",
-			alert : "\
-				<div class='dialog gridAlert {{type}}'>\
+			alert : ""+
+				"<div class='dialog gridAlert {{type}}'>\
 					<span class='label label-{{type}}'>{{title}}</span>\
 					<span class='body'>{{msg}}</span>\
 					<div class='buttons'>\
@@ -616,13 +631,13 @@ var grids = [];
 					</div>\
 				</div>\
 			",
-			notify : "\
-				<div class='dialog gridNotify'>\
+			notify : ""+
+				"<div class='dialog gridNotify'>\
 					<span class='body'>{{msg}}</span>\
 				</div>\
 			",
-			pager : "\
-				<div class='pagination left'>\
+			pager : ""+
+				"<div class='pagination left'>\
 				  <ul>\
 				  	<li class='disabled'>\
 				  		<a href='#' class='pager_showing'>showing \
@@ -722,75 +737,81 @@ var grids = [];
 				
 				// when our ajax is done, move on.
 				selectPromise.done(function() {
-				
-					// build the table in column form, instead of row form
-					for(col in self.columns) {
-						
-						// options on the column
-						colOpts = self.columns[col];
-						
-						// opening col div
-						colHtml += "<div class='col _"+(colOpts.type || '')+"' col='"+col+"'>";
-						
-						// blank cells mess things up
-						if(colOpts.header == "") colOpts.header = "&nbsp;"
-						
-						// add header cell with resizer, sortable bar and blank cell
-						// this is only the header and not the whole column because we want the ability
-						// to keep adding strings to the return for speed
-						colHtml +=  self._render("columnHeader")(colOpts);
-						
-						for(key in data.rows) {
-							pkey = key.substr(1);
-							row = data.rows[key];
-							for(rowCol in row) {
-								if(rowCol === col) {
-									
-									// main value
-									cellValue = row[col],
-									cellClass = "";
-									
-									// setup some types
-									if(typeof self.cellTypes[colOpts.type] == "function") {
+					
+					// it will be an object if it has data
+					if(!Array.isArray(data.rows)) {
+					
+						// build the table in column form, instead of row form
+						for(col in self.columns) {
 							
-										typeOpts = self.cellTypes[colOpts.type](cellValue,colOpts,self);
+							// options on the column
+							colOpts = self.columns[col];
+							
+							// opening col div
+							colHtml += "<div class='col _"+(colOpts.type || '')+"' col='"+col+"'>";
+							
+							// blank cells mess things up
+							if(colOpts.header == "") colOpts.header = "&nbsp;"
+							
+							// add header cell with resizer, sortable bar and blank cell
+							// this is only the header and not the whole column because we want the ability
+							// to keep adding strings to the return for speed
+							colHtml +=  self._render("columnHeader")(colOpts);
+							
+							for(key in data.rows) {
+								pkey = key.substr(1);
+								row = data.rows[key];
+								for(rowCol in row) {
+									if(rowCol === col) {
 										
-										// protect a no return
-										if(typeof typeOpts == "undefined") typeOpts = {cellValue : cellValue,cellClass: ""};
-			
-										cellValue = typeOpts.cellValue;
-										cellClass = typeOpts.cellClass;
-									}
-	
-									
-									// empty cells kinda mess with things
-									if(cellValue == "") cellValue = "&nbsp;";
+										// main value
+										cellValue = row[col],
+										cellClass = "";
 										
-									// add linking
-									// this is not a type because you can link anything by adding href
-									if(colOpts.href) {
-										// make some tokens for use in the href
-										var linkTokens = {value : cellValue}
-										// add all the column values, column.Title i.e.
-										for(var aCol in row) linkTokens["columns."+aCol] = row[aCol];
-										// render the href with the tokens
-										var href = self._render(colOpts.href)(linkTokens);
-										// wrap the cell value in an a tag with the rendered href 
-										cellValue = "<a href='"+href+"'>"+cellValue+"</a>";
+										// setup some types
+										if(typeof self.cellTypes[colOpts.type] == "function") {
+								
+											typeOpts = self.cellTypes[colOpts.type](cellValue,colOpts,self);
+											
+											// protect a no return
+											if(typeof typeOpts == "undefined") typeOpts = {cellValue : cellValue,cellClass: ""};
+				
+											cellValue = typeOpts.cellValue;
+											cellClass = typeOpts.cellClass;
+										}
+		
+										
+										// empty cells kinda mess with things
+										if(cellValue == "") cellValue = "&nbsp;";
+											
+										// add linking
+										// this is not a type because you can link anything by adding href
+										if(colOpts.href) {
+											// make some tokens for use in the href
+											var linkTokens = {value : cellValue}
+											// add all the column values, column.Title i.e.
+											for(var aCol in row) linkTokens["columns."+aCol] = row[aCol];
+											// render the href with the tokens
+											var href = self._render(colOpts.href)(linkTokens);
+											// wrap the cell value in an a tag with the rendered href 
+											cellValue = "<a href='"+href+"'>"+cellValue+"</a>";
+										}
+										
+										// create the cell from template
+										colHtml += self._render("cell")({
+											cl : cellClass,
+											id : pkey,
+											col : col, 
+											val : cellValue
+										});
 									}
-									
-									// create the cell from template
-									colHtml += self._render("cell")({
-										cl : cellClass,
-										id : pkey,
-										col : col, 
-										val : cellValue
-									});
 								}
 							}
+			
+							colHtml += "</div>";
 						}
-		
-						colHtml += "</div>";
+					} else {
+						colHtml = "No Rows";
 					}
 					
 					// hide our loading
@@ -803,7 +824,7 @@ var grids = [];
 					self._afterLoad();
 					
 					// register loadComplate Callback
-					$(self.el).trigger("loadComplete");
+					$(self.el).trigger("loadComplete",self);
 				
 				});
 
@@ -1082,6 +1103,7 @@ var grids = [];
 		},
 		
 		deleteRow : function(e,el) {
+			e.preventDefault();
 			var self = this,
 				$cell = $(el).closest(".cell"),
 				id = $cell[0].getAttribute("data-row");
@@ -1134,8 +1156,10 @@ var grids = [];
 			}, function(res) {
 				if(res == 1) {
 					self.alert("info","Saved!",i + " Row(s) saved");
+					$(self.el).trigger("save",rows,res);
 				} else {
 					self.error(res);
+					$(self.el).trigger("saveFail",rows,res);
 				}	
 							
 			});
@@ -1168,13 +1192,13 @@ var grids = [];
 			$(this.el).find(".gridSave").removeClass("disabled");
 			
 			// get our row col and val
-			var div = el.parentNode,
+			var div = $(el).closest(".cell")[0],
 				col = div.getAttribute("data-col"),
 				row = div.getAttribute("data-row")
 				val = el.value;
 			
 			// checkboxes dont need value, they need checked
-			if($(el).hasClass("rowCheck")) val = ~~el.checked;
+			if($(el).is(":checkbox")) val = ~~el.checked;
 			
 			// set the value on the object
 			this.rows["_"+row][col] = val;
@@ -1200,7 +1224,8 @@ var grids = [];
 			// render the type to our templates
 			this.$dialog = $(this.grid._render(this.tmpl)(this));
 			// if our dialog has a button, add an event
-			this.$dialog.find(".cancel,.confirmOk").one("click",function() {
+			this.$dialog.find(".cancel,.confirmOk").one("click",function(e) {
+				e.preventDefault();
 				self.close();
 			});
 			// add to our grid
@@ -1285,8 +1310,9 @@ var grids = [];
 			// intify val
 			this.val = parseInt(val);
 			// calculate pos
-			
 			var pos = (this.val * trackLength) / this.max;
+			// dont let it go below 0
+			if(pos < 0) pos = 0;
 			// set the thumb
 			$thumb.css("margin-left",pos);
 		},
@@ -1354,7 +1380,7 @@ var grids = [];
 				$grid = $(grid.el),
 				nRows = grid.totalRows,
 				showing = grid.opts.nRowsShowing,
-				nPages = ~~(nRows / showing),
+				nPages = Math.ceil(nRows / showing),
 				page = parseInt(grid.opts.page),
 				$pager = null;
 			
@@ -1398,8 +1424,8 @@ var grids = [];
 				});
 				
 				// page events
-				$pager._on('click','.gridNext:not(.disabled)', self.next, self);
-				$pager._on('click','.gridPrev:not(.disabled)', self.prev, self);
+				$pager._on('click','.gridNext', self.next, self);
+				$pager._on('click','.gridPrev', self.prev, self);
 				$pager._on('keyup','.currentPage input', self.pageEnter, self);
 				$pager.on('click','.goto', function(e) {
 					e.preventDefault();
@@ -1488,21 +1514,25 @@ var grids = [];
 		},	
 		
 		// pager go next
-		next : function(e) {
+		next : function(e, el) {
 			// because we want to chain, we prevenDefault instead of return false;
 			e.preventDefault();
-			// load the grid with one page forward
-			this.grid.load({ page : ++this.currentPage });
+			if(!$(el).hasClass("disabled")) {
+				// load the grid with one page forward
+				this.grid.load({ page : ++this.currentPage });
+			}
 			// chain
 			return this;
 		},
 		
 		// pager go prev
-		prev : function(e) {
+		prev : function(e,el) {
 			// because we want to chain, we prevenDefault instead of return false;
 			e.preventDefault();
-			// load the grid one page back
-			this.grid.load({ page : --this.currentPage });
+			if(!$(el).hasClass("disabled")) {
+				// load the grid one page back
+				this.grid.load({ page : --this.currentPage });
+			}
 			// chain
 			return this;
 		},
@@ -1523,3 +1553,8 @@ var grids = [];
 	});
 	
 })(jQuery);
+
+
+String.prototype.has = function(search) {
+	return (this.indexOf(search) !== -1);
+}
