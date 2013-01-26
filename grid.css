@@ -377,3 +377,9 @@ div.gridWrapper.touch .gridPager .slider .sliderThumb {
   -ms-transition: none;
   transition: none;
 }
+@-moz-document url-prefix() {
+  div.gridWrapper .gridPager .search.icon:after,
+  .search input:focus:after {
+    top: 25px;
+  }
+}

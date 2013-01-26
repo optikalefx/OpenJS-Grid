@@ -27,14 +27,16 @@
 					rowNumbers: true,
 					checkboxes: true,
 					deleting : true
-				}).on("loadComplete",function(e) {
-					//console.log("loadComplete", this.instance);
-				}).on("cellClick",function(e, $cell) {
-					//console.log("cell",$cell);
-				}).on("rowCheck",function(e, $checkbox) {
-					//console.log("rowCheck",$checkbox);
-				}).on("rowClick",function(e, $rows) {
-					//console.log("rowClick",$rows);
+				}).on("loadComplete",function(e, grid) {
+					console.log("loadComplete", grid);
+				}).on("cellClick",function(e, $cell,rowData) {
+					//console.log("cell",$cell,rowData);
+				}).on("rowCheck",function(e, $checkbox, rowData) {
+					//console.log("rowCheck",$checkbox, rowData);
+				}).on("rowClick",function(e, $rows,rowData) {
+					//console.log("rowClick",$rows,rowData);
+				}).on("save",function(e, row, res) {
+					//console.log("save",row,res);
 				});
 				
 			});

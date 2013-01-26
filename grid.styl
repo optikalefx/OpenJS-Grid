@@ -286,15 +286,16 @@ div.gridWrapper
 				&:focus
 					width:150px
 		.search.icon:after, .search input:focus:after
-				content : ''
-				width: 14px;
-				height:14px;
-				display:block;
-				position:absolute;
-				top 10px;
-				left -27px;
-				background-image: url('http://twitter.github.com/bootstrap/assets/img/glyphicons-halflings.png');
-				background-position: -48px 0px;
+			content : ''
+			width: 14px;
+			height:14px;
+			display:block;
+			position:absolute;
+			top 10px;
+			left -27px;
+			background-image: url('http://twitter.github.com/bootstrap/assets/img/glyphicons-halflings.png');
+			background-position: -48px 0px;
+
 	select
 		width 100%
 	
@@ -311,4 +312,8 @@ div.gridWrapper
 .btn:hover
 	transition: none
 
-
+@-moz-document url-prefix() {
+	div.gridWrapper .gridPager .search.icon:after, .search input:focus:after {
+		top:25px
+	}
+}

@@ -1156,10 +1156,10 @@ var grids = [];
 			}, function(res) {
 				if(res == 1) {
 					self.alert("info","Saved!",i + " Row(s) saved");
-					$(self.el).trigger("save",rows,res);
+					$(self.el).trigger("save",rows[pkey],res);
 				} else {
 					self.error(res);
-					$(self.el).trigger("saveFail",rows,res);
+					$(self.el).trigger("saveFail",rows[pkey],res);
 				}	
 							
 			});
