@@ -1113,7 +1113,7 @@ var grids = [];
 					if(success) {
 						// function for timeout
 						var fadeRow = function() {
-							$(this).remove();
+							$(self.el).find(".grid-row-"+id).remove();
 							
 							// don't pop this up unless they pass it in
 							if(self.opts.deleteConfirm) {
