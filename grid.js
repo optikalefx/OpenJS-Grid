@@ -692,6 +692,7 @@ var grids = [];
 			
 			// cache the el because self.el changes some where?
 			var el = self.el
+			var cellTypes = self.cellTypes;
 			
 			// show loading box
 			this.loadingDialog = this.notify("Loading");
@@ -716,9 +717,11 @@ var grids = [];
 			} else {
 				selectPromise.resolve();
 			}
+
 			
 			promise = $.post(this.opts.action,packet,function(data) {
 				self.el = el;	// fixes some problem i dont know :(
+				self.cellTypes = cellTypes;
 				var $grid = $(self.el),
 					$columns = $grid.find(".columns");
 				

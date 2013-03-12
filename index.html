@@ -26,7 +26,15 @@
 					width: 800,
 					rowNumbers: true,
 					checkboxes: true,
-					deleting : true
+					deleting : true,
+					cellTypes : {
+			        	"hashBang": function(value, columnOpts, grid) {
+			             	return {
+			                	cellClass: "",
+			                	cellValue: "/#!/"+value
+			               }
+			            }
+					}
 				}).on("loadComplete",function(e, grid) {
 					console.log("loadComplete", grid);
 				}).on("cellClick",function(e, $cell,rowData) {
@@ -49,7 +57,7 @@
 				<th col="thumb" width="50" type="image" href="http://google.com?q={{columns.Title}}"></th>
 				<th col="Title"	width="200" href="http://google.com?q={{value}}">Title</th>
 				<th col="Price" type="money">Price</th>
-				<th col="TutorialID"  type="text">TutorialID</th>
+				<th col="TutorialID"  type="hashBang">TutorialID</th>
 				<th col="DateCreated" type="date">Last Login</th>
 				<th col="CategoryID" type="select">CategoryID</th>
 				<th col="active" type="select">Active</th>
