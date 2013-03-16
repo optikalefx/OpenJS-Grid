@@ -507,7 +507,7 @@ var grids = [];
 			/////////////////////////
 			// ADD DELETE BUTTON COLUMN
 			////////////////////////
-			if(this.opts.deleting) {
+			if(this.opts.deleting && !Array.isArray(this.rows)) {
 				
 				// add the column with a width
 				var $deleteCol = this.addColumn("Delete", {width: 65, cellClass : "center"}, function() {
@@ -583,7 +583,8 @@ var grids = [];
 			var self = this;
 	        return function (data) {
 	        	//  Caches the template so that it may be manipulated.
-	        	var temple, regex = /{{([\w\.]+)}}/g;
+	        	// allows {!{ syntax for use with other template engines
+	        	var temple, regex = /{!?{([\w\.]+)}}/g;
 	        	
 	            // use template as string if its not defined
 	            if(typeof self._templates[template] == "undefined") {
@@ -728,7 +729,7 @@ var grids = [];
 				// store some data we got back
 				self.totalRows = data.nRows;
 				self.start = data.start;
-				self.end = data.end;
+				self.end = Math.min(data.end,data.nRows);
 				self.saveable = data.saveable;
 
 				self.opts.orderBy = data.order_by;
@@ -1093,6 +1094,10 @@ var grids = [];
 			return $(this.el).find(".grid-row-"+id);
 		},
 		
+		getRowData: function(id) {
+			return this.rows["_"+id];
+		},
+		
 		// when you hover a row
 		rowHover : function(e,el) {
 			var id = el.getAttribute("data-row");
@@ -1395,7 +1400,7 @@ var grids = [];
 			// for now, we do have to render the pager, just not show it
 			var pagerHtml = grid._render("pager")({
 				start : grid.start,
-				end : grid.end,
+				end : Math.min(grid.end,nRows),
 				nRows : nRows,
 				nPages : nPages,
 				page : page,
