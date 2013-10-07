@@ -1093,6 +1093,10 @@ var grids = [];
 			return $(this.el).find(".grid-row-"+id);
 		},
 		
+		getRowData: function(id) {
+			return this.rows["_"+id];
+		},
+		
 		// when you hover a row
 		rowHover : function(e,el) {
 			var id = el.getAttribute("data-row");
