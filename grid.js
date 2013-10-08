@@ -659,7 +659,7 @@ var grids = [];
 				</div>\
 				<div class='right'>\
 					<a class='disabled gridSave btn btn-primary' href='#'>Save</a>\
-				<div>\
+				</div>\
 			"
 		},
 		
