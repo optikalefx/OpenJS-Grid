@@ -970,7 +970,7 @@ var grids = [];
 					cl : opts.cellClass || "",
 					id : pkey,
 					col : col,
-					val : fn(i)
+					val : fn(i, this.rows[key])
 				});
 				i++;
 				
