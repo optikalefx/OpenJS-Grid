@@ -326,8 +326,9 @@ div.gridWrapper .gridPager .pagination ul,
 div.gridWrapper .gridPager .pagination ol {
   margin: 0;
 }
-div.gridWrapper .gridPager .gridSave {
+div.gridWrapper .gridPager .btn {
   padding: 8px 10px;
+  margin-left:5px;
 }
 div.gridWrapper .gridPager .pager_showing {
   min-width: 108px;
