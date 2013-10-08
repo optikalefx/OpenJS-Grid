@@ -160,7 +160,6 @@
 						var method = user_opts, property = user_opts;
 						
 						// call the method, passing it all params (except first 1)
-						console.log(method, el.instance[method], typeof el.instance[method]);
 						if(typeof el.instance[method] == "function") {
 							args.splice(0,1); // first arg is the method name, we dont need this
 							return el.instance[method].apply(el.instance,args);
