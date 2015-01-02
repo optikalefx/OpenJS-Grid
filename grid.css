@@ -357,7 +357,7 @@ div.gridWrapper .gridPager .search input:focus:after {
   position: absolute;
   top: 10px;
   left: -27px;
-  background-image: url("http://twitter.github.com/bootstrap/assets/img/glyphicons-halflings.png");
+  background-image: url("bootstrap/img/glyphicons-halflings.png");
   background-position: -48px 0px;
 }
 div.gridWrapper select {
